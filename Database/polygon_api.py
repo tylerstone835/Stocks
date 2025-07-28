@@ -2,8 +2,6 @@ import pandas as pd
 from polygon import RESTClient
 from polygon.exceptions import BadResponse
 
-from utils import natural_join
-
 client = RESTClient()
 
 
@@ -13,7 +11,7 @@ def get_price_action(
     timespan: str = 'day',
     from_: str = '1970-01-01',
     to: str = '3000-01-01'
-    ) -> pd.DataFrame:
+) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the price action and volume for a designated
     ticker, timespan and date period.
@@ -53,8 +51,9 @@ def get_sma(
     ticker: str = 'MSFT',
     timespan: str = 'day',
     window: int = 10,
-    timestamp_gte: str = '1970-01-01'
-    ) -> pd.DataFrame:
+    timestamp_gte: str = '1970-01-01',
+    limit: int = 5000
+) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the simple moving average data for a designated ticker,
     timespan, window and date period.
@@ -63,6 +62,7 @@ def get_sma(
     :param timespan: Size of time window (e.g., day, week, month).
     :param window: The number of periods used in SMA calculation.
     :param timestamp_gte: Starting date for SMA data.
+    :param limit: Limit the number of results returned.
     :return: pd.DataFrame containing SMA indicator data for designated ticker.
     """
 
@@ -71,7 +71,8 @@ def get_sma(
             ticker=ticker,
             timespan=timespan,
             window=window,
-            timestamp_gte=timestamp_gte
+            timestamp_gte=timestamp_gte,
+            limit=limit
         )
 
     except BadResponse:
@@ -91,7 +92,97 @@ def get_sma(
     )
 
 
-if __name__ == '__main__':
-    df = get_price_action()
-    print(df.head())
-    df = get_sma()
+def get_ema(
+    ticker: str = 'MSFT',
+    timespan: str = 'day',
+    window: int = 10,
+    timestamp_gte: str = '1970-01-01',
+    limit: int = 5000
+) -> pd.DataFrame:
+    """
+    Returns a pd.DataFrame containing the exponential moving average data for a designated ticker,
+    timespan, window and date period.
+
+    :param ticker: Ticker symbol for a publicly traded stock.
+    :param timespan: Size of time window (e.g., day, week, month).
+    :param window: The number of periods used in EMA calculation.
+    :param timestamp_gte: Starting date for EMA data.
+    :param limit: Limit the number of results returned.
+    :return: pd.DataFrame containing EMA indicator data for designated ticker.
+    """
+
+    try:
+        response = client.get_ema(
+            ticker=ticker,
+            timespan=timespan,
+            window=window,
+            timestamp_gte=timestamp_gte,
+            limit=limit
+        )
+
+    except BadResponse:
+        print('API call failed...')
+        return pd.DataFrame()
+
+    if not response:
+        print(f'EMA data not found for {ticker}')
+        return pd.DataFrame()
+
+    return (
+        pd.DataFrame(response.values)
+        .assign(ticker=ticker)
+        .rename(columns={'value': f'ema_{window}'})
+        .filter(items=['timestamp', 'ticker', f'ema_{window}'])
+        .astype(dtype={'ticker': 'string'})
+    )
+
+
+def get_macd(
+    ticker: str = 'MSFT',
+    timespan: str = 'day',
+    short_window: int = 12,
+    long_window: int = 26,
+    signal_window: int = 9,
+    timestamp_gte: str = '1970-01-01',
+    limit: int = 5000
+) -> pd.DataFrame:
+    """
+    Returns a pd.DataFrame containing the moving average convergence/divergence data for a
+    designated ticker, timespan, window and date period.
+
+    :param ticker: Ticker symbol for a publicly traded stock.
+    :param timespan: Size of time window (e.g., day, week, month).
+    :param short_window: The short window size used to calculate the MACD data.
+    :param long_window: The long window size used to calculate the MACD data
+    :param signal_window: The window size used to calculate the MACD signal line
+    :param timestamp_gte: Starting date for MACD data.
+    :param limit: Limit the number of results returned.
+    :return: pd.DataFrame containing MACD indicator data for designated ticker.
+    """
+
+    try:
+        response = client.get_macd(
+            ticker=ticker,
+            timespan=timespan,
+            short_window=short_window,
+            long_window=long_window,
+            signal_window=signal_window,
+            timestamp_gte=timestamp_gte,
+            limit=limit
+        )
+
+    except BadResponse:
+        print('API call failed...')
+        return pd.DataFrame()
+
+    if not response:
+        print(f'MACD data not found for {ticker}')
+        return pd.DataFrame()
+
+    return (
+        pd.DataFrame(response.values)
+        .assign(ticker=ticker)
+        .rename(columns={'histogram': 'macd_histogram'})
+        .filter(items=['timestamp', 'ticker', 'macd_histogram'])
+        .astype(dtype={'ticker': 'string'})
+    )

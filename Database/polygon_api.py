@@ -10,7 +10,7 @@ def get_price_action(
     multiplier: int = 1,
     timespan: str = 'day',
     from_: str = '1970-01-01',
-    to: str = '3000-01-01'
+    to: str = '3000-01-01',
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the price action and volume for a designated
@@ -52,7 +52,7 @@ def get_sma(
     timespan: str = 'day',
     window: int = 10,
     timestamp_gte: str = '1970-01-01',
-    limit: int = 5000
+    limit: int = 5000,
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the simple moving average data for a designated ticker,
@@ -97,7 +97,7 @@ def get_ema(
     timespan: str = 'day',
     window: int = 10,
     timestamp_gte: str = '1970-01-01',
-    limit: int = 5000
+    limit: int = 5000,
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the exponential moving average data for a designated ticker,
@@ -144,7 +144,7 @@ def get_macd(
     long_window: int = 26,
     signal_window: int = 9,
     timestamp_gte: str = '1970-01-01',
-    limit: int = 5000
+    limit: int = 5000,
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the moving average convergence/divergence data for a

@@ -1,10 +1,11 @@
 import pandas as pd
 
 
-def natural_join(left: pd.DataFrame,
-                 right: pd.DataFrame,
-                 how: str = 'inner'
-                 ) -> pd.DataFrame | None:
+def natural_join(
+        left: pd.DataFrame,
+        right: pd.DataFrame,
+        how: str = 'inner',
+) -> pd.DataFrame | None:
     """
     Merges two pd.DataFrame objects based on overlapping column labels.
         :param left: Left pd.DataFrame in the join.

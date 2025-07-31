@@ -1,6 +1,9 @@
+from datetime import date, timedelta
+
 import pandas as pd
 from polygon import RESTClient
 from polygon.exceptions import BadResponse
+
 
 client = RESTClient()
 
@@ -186,3 +189,47 @@ def get_macd(
         .filter(items=['timestamp', 'ticker', 'macd_histogram'])
         .astype(dtype={'ticker': 'string'})
     )
+
+
+def get_active_tickers(
+    type: str = 'CS',
+    market: str = 'stocks',
+) -> list[str]:
+    """
+    Cross-references tickers listed as active in Polygon database and tickers traded
+    on the most recent market day. Symbols can be listed as active by Polygon, but
+    not be actively traded on the market.
+
+    :param type: Ticker type to return (e.g., CS, ETF, INDEX)
+    :param market: Market type to evaluate (e.g., stocks, crypto, indices)
+    :return: List of active, recently traded ticker symbols in designated market/type.
+    """
+
+    # Retrieve series containing common stocks with an active status.
+    try:
+        response_body = client.list_tickers(type=type, market=market, limit=1000, active=True)
+    except BadResponse:
+        print('API call failed...')
+        return
+
+    active_series = pd.DataFrame([response for response in response_body])['ticker']
+
+    # Return series containing stocks traded on the most recent trading day.
+    today = date.today()
+
+    try:
+        response = client.get_grouped_daily_aggs(date=today, market_type=market)
+        while not response:
+            today = today - timedelta(days=1)
+            response = client.get_grouped_daily_aggs(date=today, market_type=market)
+    except BadResponse:
+        print('API call failed...')
+        return
+
+    recent_series = pd.DataFrame(response)['ticker']
+
+    return (pd.merge(left=active_series,
+                     right=recent_series,
+                     how='inner',
+                     on='ticker')
+            .drop_duplicates())['ticker'].to_list()

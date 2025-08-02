@@ -218,8 +218,14 @@ def get_active_tickers(
         response = client.get_grouped_daily_aggs(date=today, market_type=market)
     recent_series = pd.DataFrame(response)['ticker']
 
-    return (pd.merge(left=active_series,
-                     right=recent_series,
-                     how='inner',
-                     on='ticker')
-            .drop_duplicates())['ticker'].to_list()
+    return (
+        pd.merge(
+            left=active_series,
+            right=recent_series,
+            how='inner',
+            on='ticker'
+        )
+        .drop_duplicates()
+        ['ticker']
+        .to_list()
+    )

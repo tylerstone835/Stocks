@@ -2,8 +2,6 @@ from datetime import datetime
 
 import pandas as pd
 
-from table_maps import daily_table_map
-
 
 def natural_join(
         *dfs: pd.DataFrame,
@@ -39,24 +37,45 @@ def natural_join(
 
 
 def build_df_from_map(
-    table_map: dict,
+    map: dict,
     ticker: str,
 ) -> pd.DataFrame:
     """
     Creates pd.DataFrame for designated symbol based on the table_map structure.
 
-    :param table_map: dict object containing the callables and params necessary to make table in map.
+    :param map: dict object containing the callables and params necessary to make table in map.
     :ticker: Ticker symbol for a publicly traded stock.
     """
 
+    # Construct master dataframe with callables with params in table_map
     df_list = []
-    for column in table_map:
-        if table_map[column]['callable'] is None or table_map[column]['params'] is None:
+    for column in map:
+        if map[column]['callable'] is None or map[column]['params'] is None:
             continue
 
-        callable = table_map[column]['callable']
-        params = table_map[column]['params']
+        callable = map[column]['callable']
+        params = map[column]['params']
 
         df_list.append(callable(ticker=ticker, **params ))
 
-    return natural_join(*df_list, how='inner')
+    master_df = natural_join(*df_list, how='inner')
+
+    # Modify constructed master dataframe with callables stored without params.
+    for column in map:
+        if map[column]['callable'] is None or map[column]['params'] is not None:
+            continue
+
+        callable = map[column]['callable']
+        callable(master_df)
+
+    return master_df
+
+
+def timestamp_to_date(df: pd.DataFrame) -> None:
+    """
+    """
+    if 'timestamp' not in df.columns:
+        return
+
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
+    df.rename(columns={'timestamp': 'date'}, inplace=True)

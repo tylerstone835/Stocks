@@ -2,21 +2,19 @@ import os
 
 import sqlite3
 
-database_fp = os.environ.get('STOCK_DATABASE')
-
 
 def create_db_table_from_map(
+    database_fp: str,
     table_name: str,
     map: dict,
-    database_fp: str = database_fp,
 ) -> None:
     """
     Parses information from map to construct/execute a create table statement
     in designated SQLite database.
 
+    :param database_fp: filepath to target database.
     :param table_name: Name for created table.
     :param map: dict object containing column names (keys) and dtype/constraint values.
-    :param database_fp: filepath to target database.
     """
 
     column_definitions = ',\n\t'.join([f'{column} {map[column]['dtype']} {map[column]['constraint']}'

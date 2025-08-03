@@ -71,11 +71,41 @@ def build_df_from_map(
     return master_df
 
 
-def timestamp_to_date(df: pd.DataFrame) -> None:
+def timestamp_to_date(
+    df: pd.DataFrame,
+) -> None:
     """
+    Converts the unix[ms] timestamp column to a readable date column.
+
+    :param df: DataFrame containing a timestamp column.
     """
+
     if 'timestamp' not in df.columns:
         return
 
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
     df.rename(columns={'timestamp': 'date'}, inplace=True)
+
+
+def calculate_variance(
+    df: pd.DataFrame,
+    spine: str = 'ema_20',
+) -> None:
+    """
+    Finds the max variance between the high/low and the selected spine (usually 20-period).
+    Raises a ValueError if data needed for calculation isn't found (price action and at least on EMA)
+
+    :param df: Target DataFrame.
+    :param spine: Series label of the ema you wish to find a variance of. (Typically 20-period)
+    """
+
+    if spine not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
+        raise ValueError('high, low or designated spine not found in submitted pd.DataFrame.')
+
+    df['high_difference'] = abs(df['high'] - df[spine])
+    df['low_difference'] = abs(df['low'] - df[spine])
+
+    df['max_difference'] = df[['high_difference', 'low_difference']].max(axis=1)
+    df['variance'] = round(df['max_difference'] / df[spine], 4)
+
+    df.drop(columns=['high_difference', 'low_difference', 'max_difference'], inplace=True)

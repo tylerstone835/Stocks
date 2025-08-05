@@ -1,10 +1,11 @@
 import os
 
+import pandas as pd
 import sqlite3
 
 
-def create_db_table_from_map(
-    database_fp: str,
+def create_table_from_map(
+    db_filepath: str,
     table_name: str,
     map: dict,
 ) -> None:
@@ -12,7 +13,7 @@ def create_db_table_from_map(
     Parses information from map to construct/execute a create table statement
     in designated SQLite database.
 
-    :param database_fp: filepath to target database.
+    :param db_filepath: filepath to target database.
     :param table_name: Name for created table.
     :param map: dict object containing column names (keys) and dtype/constraint values.
     """
@@ -33,10 +34,32 @@ def create_db_table_from_map(
         );
     """
 
-    with sqlite3.connect(database_fp) as conn:
+    with sqlite3.connect(db_filepath) as conn:
         cursor = conn.cursor()
 
         cursor.execute('BEGIN TRANSACTION;')
         cursor.execute(f'DROP TABLE IF EXISTS {table_name};')
         cursor.execute(create_table_statement)
+        cursor.execute('COMMIT;')
+
+
+def insert_data(
+    df: pd.DataFrame,
+    table_name: str,
+    db_filepath: str
+) -> None:
+    """
+    Insert pd.DataFrame into target SQL table.
+
+    :param df: Data to insert.
+    :param table_name: Table to insert data into.
+    :param db_filepath: Filepath of target database.
+    """
+    binders = ', '.join(['?' for _ in df.columns])
+
+    with sqlite3.connect(db_filepath) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('BEGIN TRANSACTION;')
+        cursor.executemany(f'INSERT INTO {table_name} VALUES({binders})', df.values)
         cursor.execute('COMMIT;')

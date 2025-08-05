@@ -36,43 +36,8 @@ def natural_join(
     return master_df
 
 
-def build_df_from_map(
-    map: dict,
-    ticker: str,
-) -> pd.DataFrame:
-    """
-    Creates pd.DataFrame for designated symbol based on the table_map structure.
-
-    :param map: dict object containing the callables and params necessary to make table in map.
-    :ticker: Ticker symbol for a publicly traded stock.
-    """
-
-    # Construct master dataframe with callables with params in table_map
-    df_list = []
-    for column in map:
-        if map[column]['callable'] is None or map[column]['params'] is None:
-            continue
-
-        callable = map[column]['callable']
-        params = map[column]['params']
-
-        df_list.append(callable(ticker=ticker, **params ))
-
-    master_df = natural_join(*df_list, how='inner')
-
-    # Modify constructed master dataframe with callables stored without params.
-    for column in map:
-        if map[column]['callable'] is None or map[column]['params'] is not None:
-            continue
-
-        callable = map[column]['callable']
-        callable(master_df)
-
-    return master_df
-
-
 def timestamp_to_date(
-    df: pd.DataFrame,
+        df: pd.DataFrame,
 ) -> None:
     """
     Converts the unix[ms] timestamp column to a readable date column.
@@ -88,8 +53,8 @@ def timestamp_to_date(
 
 
 def calculate_variance(
-    df: pd.DataFrame,
-    spine: str = 'ema_20',
+        df: pd.DataFrame,
+        spine: str = 'ema_20',
 ) -> None:
     """
     Finds the max variance between the high/low and the selected spine (usually 20-period).
@@ -99,9 +64,6 @@ def calculate_variance(
     :param spine: Series label of the ema you wish to find a variance of. (Typically 20-period)
     """
 
-    if spine not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
-        raise ValueError('high, low or designated spine not found in submitted pd.DataFrame.')
-
     df['high_difference'] = abs(df['high'] - df[spine])
     df['low_difference'] = abs(df['low'] - df[spine])
 
@@ -109,3 +71,82 @@ def calculate_variance(
     df['variance'] = round(df['max_difference'] / df[spine], 4)
 
     df.drop(columns=['high_difference', 'low_difference', 'max_difference'], inplace=True)
+
+
+def percentile(
+        series: pd.Series,
+) -> float:
+    """
+    Custom pd.Agg function to apply as a rolling window function.
+    This will return the value that defines the 95th percentile limit
+    over a specified rolling period.
+        :param series: pd.Series object passed from pd.series.agg()
+        :return: Scalar value representing the 95th percentile in series.
+    """
+    sorted_series_values = sorted(series.to_list())
+    percentile_index = int(len(sorted_series_values) * .95) - 1
+
+    return sorted_series_values[percentile_index]
+
+
+def calculate_keltner_channels(
+        df: pd.DataFrame,
+        spine: str = 'ema_20',
+        window: int = 125,
+) -> None:
+    """
+    Adds Keltner Channels based on the specified EMA spine. Rolling channels are based
+    on a designated window, usually 125 periods for daily and 26 periods for weekly,
+    or approximately 6 months. Will raise a ValueError if price action data is not found
+    in object's dataframe.
+
+    :param df: Target pd.DataFrame
+    :param spine: EMA window to base channels on.
+    :param window: Number of rolling periods used in percentile window function.
+    """
+    if 'high' not in df.columns or 'low' not in df.columns or spine not in df.columns:
+        raise ValueError('Base data needed for calculation not found. Please run get_price_action and/or get_ema '
+                         'before running get_keltner_channels')
+
+    if len(df) < window:
+        df[['deviation', 'upper_channel', 'lower_channel']] = None
+        return
+
+    calculate_variance(df, spine)
+    df['deviation'] = df['variance'].rolling(window).agg(percentile)
+
+    df['upper_channel'] = round(df[spine] * (df['deviation'] + 1), 2)
+    df['lower_channel'] = round(df[spine] * (1 - df['deviation']), 2)
+    df.drop(columns=['variance'], inplace=True)
+
+
+def calculate_impulse(
+    df: pd.DataFrame,
+    spine: str = 'ema_10',
+) -> None:
+    """
+    Adds an impulse indicator based on a combination of the macd_histogram
+    column and a designated spine. Spine is usually the intermediate period EMA,
+    or the 10 period EMA. Will raise a ValueError if macd data or ema data is
+    not found in object's dataframe.
+        :param df: Target pd.DataFrame
+        :param spine: Designated spine for comparison against MACD Histogram.
+    """
+    if 'macd_histogram' not in df.columns or spine not in df.columns:
+        raise ValueError('Base data needed for calculation not found. Please run get_macd and/or get_ema '
+                         'before running get_impulse.')
+
+    if len(df) < 2:
+        df['impulse'] = 'Red'
+        return
+
+    df['ema_impulse'] = df[spine].rolling(2).max()
+    df['macd_impulse'] = df['macd_histogram'].rolling(2).max()
+
+    df['macd_rising'] = df['macd_impulse'] == df['macd_histogram']
+    df['ema_rising'] = df['ema_impulse'] == df[spine]
+
+    df['impulse'] = df[['macd_rising', 'ema_rising']].sum(axis=1)
+    df['impulse'] = df['impulse'].map({0: 'Red', 1: 'Blue', 2: 'Green'})
+
+    df.drop(columns=['ema_impulse', 'macd_impulse', 'macd_rising', 'ema_rising'], inplace=True)

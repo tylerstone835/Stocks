@@ -150,3 +150,31 @@ def calculate_impulse(
     df['impulse'] = df['impulse'].map({0: 'Red', 1: 'Blue', 2: 'Green'})
 
     df.drop(columns=['ema_impulse', 'macd_impulse', 'macd_rising', 'ema_rising'], inplace=True)
+
+
+def calculate_atr(
+    df: pd.DataFrame,
+    window: int = 14,
+) -> None:
+    """
+    Adds ATR indicator data to the batch. If price action data (high, low, close) is
+    not found in df, it will raise a ValueError.
+        :param df: Target DataFrame.
+        :param window: rolling period for ATR average.
+    """
+    if 'close' not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
+        raise ValueError('Base data needed for calculation not found. Please run get_price_action '
+                         'before running get_atr.')
+
+    if len(df) < window:
+        df['atr'] = None
+        return
+
+    df['yest_close'] = df['close'].shift(1)
+    df['high_low_diff'] = df['high'] - df['low']
+    df['high_close_diff'] = abs(df['yest_close'] - df['high'])
+    df['low_close_diff'] = abs(df['yest_close'] - df['low'])
+    df['pre_atr'] = df[['high_low_diff', 'high_close_diff', 'low_close_diff']].max(axis=1)
+    df['atr'] = df['pre_atr'].rolling(window).mean().round(2)
+
+    df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)

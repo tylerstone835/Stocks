@@ -14,6 +14,7 @@ def get_price_action(
     timespan: str = 'day',
     from_: str = '1970-01-01',
     to: str = '3000-01-01',
+    sort: str = 'asc',
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the price action and volume for a designated
@@ -24,6 +25,7 @@ def get_price_action(
     :param timespan: Size of time window (e.g., day, week, month).
     :param from_: Start of desired date period. Default to Unix start time to capture all.
     :param to: End of desired date period.
+    :param sort: Sort order of the returned API call.
     :return: pd.DataFrame containing price action and volume for designated ticker.
     """
 
@@ -32,7 +34,8 @@ def get_price_action(
                                    multiplier=multiplier,
                                    timespan=timespan,
                                    from_=from_,
-                                   to=to
+                                   to=to,
+                                   sort=sort
                                    )
     except BadResponse:
         print('API call failed...')
@@ -56,6 +59,7 @@ def get_sma(
     window: int = 10,
     timestamp_gte: str = '1970-01-01',
     limit: int = 5000,
+    sort: str = 'asc',
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the simple moving average data for a designated ticker,
@@ -66,6 +70,7 @@ def get_sma(
     :param window: The number of periods used in SMA calculation.
     :param timestamp_gte: Starting date for SMA data.
     :param limit: Limit the number of results returned.
+    :param sort: Sort order of the returned API call.
     :return: pd.DataFrame containing SMA indicator data for designated ticker.
     """
 
@@ -75,7 +80,8 @@ def get_sma(
             timespan=timespan,
             window=window,
             timestamp_gte=timestamp_gte,
-            limit=limit
+            limit=limit,
+            order=sort
         )
 
     except BadResponse:
@@ -101,6 +107,7 @@ def get_ema(
     window: int = 10,
     timestamp_gte: str = '1970-01-01',
     limit: int = 5000,
+    sort: str = 'asc',
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the exponential moving average data for a designated ticker,
@@ -111,6 +118,7 @@ def get_ema(
     :param window: The number of periods used in EMA calculation.
     :param timestamp_gte: Starting date for EMA data.
     :param limit: Limit the number of results returned.
+    :param sort: Sort order of the returned API call.
     :return: pd.DataFrame containing EMA indicator data for designated ticker.
     """
 
@@ -120,7 +128,8 @@ def get_ema(
             timespan=timespan,
             window=window,
             timestamp_gte=timestamp_gte,
-            limit=limit
+            limit=limit,
+            order=sort
         )
 
     except BadResponse:
@@ -148,6 +157,7 @@ def get_macd(
     signal_window: int = 9,
     timestamp_gte: str = '1970-01-01',
     limit: int = 5000,
+    sort: str = 'asc',
 ) -> pd.DataFrame:
     """
     Returns a pd.DataFrame containing the moving average convergence/divergence data for a
@@ -160,6 +170,7 @@ def get_macd(
     :param signal_window: The window size used to calculate the MACD signal line
     :param timestamp_gte: Starting date for MACD data.
     :param limit: Limit the number of results returned.
+    :param sort: Sort order of the returned API call.
     :return: pd.DataFrame containing MACD indicator data for designated ticker.
     """
 
@@ -171,7 +182,8 @@ def get_macd(
             long_window=long_window,
             signal_window=signal_window,
             timestamp_gte=timestamp_gte,
-            limit=limit
+            limit=limit,
+            order=sort
         )
 
     except BadResponse:
@@ -192,7 +204,7 @@ def get_macd(
 
 
 def get_active_tickers(
-    type: str = 'CS',
+    ticker_type: str = 'CS',
     market: str = 'stocks',
 ) -> list[str]:
     """
@@ -200,13 +212,13 @@ def get_active_tickers(
     on the most recent market day. Symbols can be listed as active by Polygon, but
     not be actively traded on the market.
 
-    :param type: Ticker type to return (e.g., CS, ETF, INDEX)
+    :param ticker_type: Ticker type to return (e.g., CS, ETF, INDEX)
     :param market: Market type to evaluate (e.g., stocks, crypto, indices)
     :return: List of active, recently traded ticker symbols in designated market/type.
     """
 
     # Retrieve series containing common stocks with an active status.
-    response_body = client.list_tickers(type=type, market=market, limit=1000, active=True)
+    response_body = client.list_tickers(type=ticker_type, market=market, limit=1000, active=True)
     active_series = pd.DataFrame([response for response in response_body])['ticker']
 
     # Return series containing stocks traded on the most recent trading day.

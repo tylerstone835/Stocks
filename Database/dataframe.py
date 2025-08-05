@@ -158,7 +158,7 @@ def calculate_atr(
 ) -> None:
     """
     Adds ATR indicator data to the batch. If price action data (high, low, close) is
-    not found in df, it will raise a ValueError.
+    not found in df, it will raise a ValueError. Uses SMA, not WMA.
         :param df: Target DataFrame.
         :param window: rolling period for ATR average.
     """
@@ -175,6 +175,6 @@ def calculate_atr(
     df['high_close_diff'] = abs(df['yest_close'] - df['high'])
     df['low_close_diff'] = abs(df['yest_close'] - df['low'])
     df['pre_atr'] = df[['high_low_diff', 'high_close_diff', 'low_close_diff']].max(axis=1)
-    df['atr'] = df['pre_atr'].rolling(window).mean().round(2)
+    df['atr'] = df['pre_atr'].rolling(window).mean().round(3)
 
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)

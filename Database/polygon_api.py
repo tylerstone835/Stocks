@@ -95,6 +95,7 @@ def get_sma(
     return (
         pd.DataFrame(response.values)
         .assign(ticker=ticker)
+        .assign(value=lambda x: x.value.round(2))
         .rename(columns={'value': f'sma_{window}'})
         .filter(items=['timestamp', 'ticker', f'sma_{window}'])
         .astype(dtype={'ticker': 'string'})
@@ -143,6 +144,7 @@ def get_ema(
     return (
         pd.DataFrame(response.values)
         .assign(ticker=ticker)
+        .assign(value=lambda x: x.value.round(2))
         .rename(columns={'value': f'ema_{window}'})
         .filter(items=['timestamp', 'ticker', f'ema_{window}'])
         .astype(dtype={'ticker': 'string'})
@@ -197,6 +199,7 @@ def get_macd(
     return (
         pd.DataFrame(response.values)
         .assign(ticker=ticker)
+        .assign(histogram=lambda x: x.histogram.round(7))
         .rename(columns={'histogram': 'macd_histogram'})
         .filter(items=['timestamp', 'ticker', 'macd_histogram'])
         .astype(dtype={'ticker': 'string'})

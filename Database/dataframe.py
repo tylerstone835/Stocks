@@ -4,8 +4,8 @@ import pandas as pd
 
 
 def natural_join(
-        *dfs: pd.DataFrame,
-        how: str = 'inner',
+    *dfs: pd.DataFrame,
+    how: str = 'inner',
 ) -> pd.DataFrame | None:
     """
     Merges two pd.DataFrame objects based on overlapping column labels.
@@ -37,7 +37,7 @@ def natural_join(
 
 
 def timestamp_to_date(
-        df: pd.DataFrame,
+    df: pd.DataFrame,
 ) -> None:
     """
     Converts the unix[ms] timestamp column to a readable date column.
@@ -53,8 +53,8 @@ def timestamp_to_date(
 
 
 def calculate_variance(
-        df: pd.DataFrame,
-        spine: str = 'ema_20',
+    df: pd.DataFrame,
+    spine: str = 'ema_20',
 ) -> None:
     """
     Finds the max variance between the high/low and the selected spine (usually 20-period).
@@ -74,7 +74,7 @@ def calculate_variance(
 
 
 def percentile(
-        series: pd.Series,
+    series: pd.Series,
 ) -> float:
     """
     Custom pd.Agg function to apply as a rolling window function.
@@ -90,9 +90,9 @@ def percentile(
 
 
 def calculate_keltner_channels(
-        df: pd.DataFrame,
-        spine: str = 'ema_20',
-        window: int = 125,
+    df: pd.DataFrame,
+    spine: str = 'ema_20',
+    window: int = 125,
 ) -> None:
     """
     Adds Keltner Channels based on the specified EMA spine. Rolling channels are based
@@ -133,8 +133,9 @@ def calculate_impulse(
         :param spine: Designated spine for comparison against MACD Histogram.
     """
     if 'macd_histogram' not in df.columns or spine not in df.columns:
-        raise ValueError('Base data needed for calculation not found. Please run get_macd and/or get_ema '
-                         'before running get_impulse.')
+        print('macd and/or ema spine was not found...')
+        df['impulse'] = 'Red'
+        return
 
     if len(df) < 2:
         df['impulse'] = 'Red'
@@ -163,8 +164,9 @@ def calculate_atr(
         :param window: rolling period for ATR average.
     """
     if 'close' not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
-        raise ValueError('Base data needed for calculation not found. Please run get_price_action '
-                         'before running get_atr.')
+        print('Price action data was not found...')
+        df['atr'] = None
+        return
 
     if len(df) < window:
         df['atr'] = None

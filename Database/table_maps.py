@@ -1,4 +1,4 @@
-daily_table_map = {
+price_fact_map = {
     'date': {
         'dtype': 'DATE',
         'constraint': 'PRIMARY KEY'

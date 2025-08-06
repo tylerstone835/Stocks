@@ -86,11 +86,11 @@ def get_sma(
 
     except BadResponse:
         print('API call failed...')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], f'sma_{window}': []})
 
-    if not response:
+    if not response.values:
         print(f'SMA data not found for {ticker}')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], f'sma_{window}': []})
 
     return (
         pd.DataFrame(response.values)
@@ -135,11 +135,11 @@ def get_ema(
 
     except BadResponse:
         print('API call failed...')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], f'ema_{window}': []})
 
-    if not response:
+    if not response.values:
         print(f'EMA data not found for {ticker}')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], f'ema_{window}': []})
 
     return (
         pd.DataFrame(response.values)
@@ -190,11 +190,11 @@ def get_macd(
 
     except BadResponse:
         print('API call failed...')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], 'macd_histogram': []})
 
-    if not response:
+    if not response.values:
         print(f'MACD data not found for {ticker}')
-        return pd.DataFrame()
+        return pd.DataFrame({'ticker': [], 'macd_histogram': []})
 
     return (
         pd.DataFrame(response.values)

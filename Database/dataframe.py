@@ -5,7 +5,7 @@ import pandas as pd
 
 def natural_join(
     *dfs: pd.DataFrame,
-    how: str = 'inner',
+    how: str = 'left',
 ) -> pd.DataFrame | None:
     """
     Merges two pd.DataFrame objects based on overlapping column labels.
@@ -20,15 +20,7 @@ def natural_join(
             master_df = df
             continue
 
-        columns_list = list(master_df.columns) + list(df.columns)
-
-        dupe_labels_df = (
-            pd.Series(columns_list)
-            .value_counts()
-            .reset_index()
-        )
-
-        dupe_labels_list = dupe_labels_df.loc[dupe_labels_df['count'] > 1]['index'].to_list()
+        dupe_labels_list = list(set(master_df.columns) & set(df.columns))
 
         if dupe_labels_list:
             master_df = master_df.merge(df, how=how, on=dupe_labels_list)

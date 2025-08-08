@@ -209,6 +209,7 @@ def get_macd(
 def get_active_tickers(
     ticker_type: str = 'CS',
     market: str = 'stocks',
+    batch_size: int = 50,
 ) -> list[str]:
     """
     Cross-references tickers listed as active in Polygon database and tickers traded
@@ -216,7 +217,8 @@ def get_active_tickers(
     not be actively traded on the market.
 
     :param ticker_type: Ticker type to return (e.g., CS, ETF, INDEX)
-    :param market: Market type to evaluate (e.g., stocks, crypto, indices)
+    :param market: Market type to evaluate (e.g., stocks, crypto, indices).
+    :param batch_size: Number of elements in sublist (batches).
     :return: List of active, recently traded ticker symbols in designated market/type.
     """
 
@@ -233,7 +235,7 @@ def get_active_tickers(
         response = client.get_grouped_daily_aggs(date=today, market_type=market)
     recent_series = pd.DataFrame(response)['ticker']
 
-    return (
+    ticker_list = (
         pd.merge(
             left=active_series,
             right=recent_series,
@@ -244,3 +246,5 @@ def get_active_tickers(
         ['ticker']
         .to_list()
     )
+
+    return [ticker_list[i: i + batch_size] for i in range(0, len(ticker_list), batch_size)]

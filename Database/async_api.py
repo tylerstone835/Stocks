@@ -117,7 +117,7 @@ async def gather_sma(
     timestamp_gte: str = '1970-01-01',
 ) -> pd.DataFrame:
     """
-    Using get_sma(), gather price action dataframes asynchronously.
+    Using get_sma(), gather SMA dataframes asynchronously.
 
     :param *ticker_batch: Tickers to gather price action data for.
     :param timespan: Size of time window (e.g., day, week, month).
@@ -176,7 +176,7 @@ async def gather_ema(
     timestamp_gte: str = '1970-01-01',
 ) -> pd.DataFrame:
     """
-    Using get_ema(), gather price action dataframes asynchronously.
+    Using get_ema(), gather EMA dataframes asynchronously.
 
     :param *ticker_batch: Tickers to gather price action data for.
     :param timespan: Size of time window (e.g., day, week, month).
@@ -232,7 +232,7 @@ async def gather_macd(
     timestamp_gte: str = '1970-01-01',
 ) -> pd.DataFrame:
     """
-    Using get_macd(), gather price action dataframes asynchronously.
+    Using get_macd(), gather MACD dataframes asynchronously.
 
     :param *ticker_batch: Tickers to gather price action data for.
     :param timespan: Size of time window (e.g., day, week, month).

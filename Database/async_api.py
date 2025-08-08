@@ -193,3 +193,59 @@ async def gather_ema(
     return (pd.concat(df_array)
             .assign(value=lambda x: x.value.round(2))
             .rename(columns={'value': f'ema_{window}'}))
+
+
+async def get_macd(
+    session: aiohttp.ClientSession,
+    ticker: str = 'MSFT',
+    timespan: str = 'day',
+    timestamp_gte: str = '1970-01-01',
+) -> pd.DataFrame:
+    """
+    Asynchronous coroutine that retrieves moving average convergence/divergence data
+    for a designated ticker, timespan, window and date period.
+
+    :param session: Asynchronous http client.
+    :param ticker: Ticker symbol for a publicly traded stock.
+    :param timespan: Size of time window (e.g., day, week, month).
+    :param timestamp_gte: Starting date for MACD data.
+    :return: pd.DataFrame containing MACD indicator data for designated ticker.
+    """
+
+    path = f'/v1/indicators/macd/{ticker}?timespan={timespan}&limit=5000&timestamp.gte={timestamp_gte}&apiKey={POLYGON_API_KEY}'
+
+    response = await session.get(path)
+    if response.status != 200:
+        print('API call failed...')
+        return pd.DataFrame()
+
+    if 'values' not in (await response.json())['results']:
+        print(f'No MACD values found for {ticker}')
+        return pd.DataFrame()
+
+    return pd.DataFrame((await response.json())['results']['values']).assign(symbol=ticker)
+
+
+async def gather_macd(
+    *ticker_batch,
+    timespan: str = 'day',
+    timestamp_gte: str = '1970-01-01',
+) -> pd.DataFrame:
+    """
+    Using get_macd(), gather price action dataframes asynchronously.
+
+    :param *ticker_batch: Tickers to gather price action data for.
+    :param timespan: Size of time window (e.g., day, week, month).
+    :param timestamp_gte: Starting date for SMA data.
+    :return: pd.DataFrame containing MACD indicator data for designated ticker.
+    """
+    async with aiohttp.ClientSession('https://api.polygon.io') as session:
+        df_array = await asyncio.gather(
+            *[get_macd(session, ticker, timespan, timestamp_gte)
+              for ticker in ticker_batch]
+        )
+
+    return (pd.concat(df_array)
+            .assign(histogram=lambda x: x.histogram.round(7))
+            .rename(columns={'histogram': 'macd_histogram'})
+            .filter(items=['timestamp', 'symbol', 'macd_histogram']))

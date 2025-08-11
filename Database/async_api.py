@@ -4,6 +4,8 @@ import os
 import aiohttp
 import pandas as pd
 
+from table_maps import overview_map
+
 POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY')
 
 
@@ -32,7 +34,7 @@ async def get_price_action(
     response = await session.get(path)
 
     if response.status != 200:
-        print('API call failed...')
+        # print('API call failed...')
         return pd.DataFrame()
 
     return pd.DataFrame((await response.json())['results']).assign(symbol=ticker)
@@ -100,11 +102,11 @@ async def get_sma(
 
     response = await session.get(path)
     if response.status != 200:
-        print('API call failed...')
+        # print('API call failed...')
         return pd.DataFrame()
 
     if 'values' not in (await response.json())['results']:
-        print(f'No SMA values found for {ticker}')
+        # print(f'No SMA values found for {ticker}')
         return pd.DataFrame()
 
     return pd.DataFrame((await response.json())['results']['values']).assign(symbol=ticker)
@@ -159,11 +161,11 @@ async def get_ema(
 
     response = await session.get(path)
     if response.status != 200:
-        print('API call failed...')
+        # print('API call failed...')
         return pd.DataFrame()
 
     if 'values' not in (await response.json())['results']:
-        print(f'No EMA values found for {ticker}')
+        # print(f'No EMA values found for {ticker}')
         return pd.DataFrame()
 
     return pd.DataFrame((await response.json())['results']['values']).assign(symbol=ticker)
@@ -216,11 +218,11 @@ async def get_macd(
 
     response = await session.get(path)
     if response.status != 200:
-        print('API call failed...')
+        # print('API call failed...')
         return pd.DataFrame()
 
     if 'values' not in (await response.json())['results']:
-        print(f'No MACD values found for {ticker}')
+        # print(f'No MACD values found for {ticker}')
         return pd.DataFrame()
 
     return pd.DataFrame((await response.json())['results']['values']).assign(symbol=ticker)
@@ -249,3 +251,52 @@ async def gather_macd(
             .assign(histogram=lambda x: x.histogram.round(7))
             .rename(columns={'histogram': 'macd_histogram'})
             .filter(items=['timestamp', 'symbol', 'macd_histogram']))
+
+
+async def get_overview(
+    session: aiohttp.ClientSession,
+    ticker: str = 'MSFT',
+) -> pd.DataFrame:
+    """
+    Asynchronous coroutine that retrieves basic company information.
+
+    :param session: Asynchronous http client.
+    :param ticker: Ticker symbol for a publicly traded stock.
+    :return: pd.DataFrame containing company overview data for designated ticker.
+    """
+
+    path = f'/v3/reference/tickers/{ticker}?apiKey={POLYGON_API_KEY}'
+
+    response = await session.get(path)
+    if response.status != 200:
+        print('API call failed...')
+        return pd.DataFrame()
+
+    if 'results' not in (await response.json()):
+        print(f'No overview found for {ticker}')
+        return pd.DataFrame()
+
+    return (await response.json())['results']
+
+
+async def gather_overview(
+    *ticker_batch
+) -> pd.DataFrame:
+    """
+    Using get_overview(), gather overview dataframes asynchronously.
+
+    :param *ticker_batch: Tickers to gather overview data for.
+    :return: pd.DataFrame containing overview data for designated ticker.
+    """
+    async with aiohttp.ClientSession('https://api.polygon.io') as session:
+        df_array = await asyncio.gather(
+            *[get_overview(session, ticker) for ticker in ticker_batch]
+        )
+
+    return (pd.json_normalize(df_array)
+            .rename(columns={
+                        'ticker': 'symbol',
+                        'share_class_shares_outstanding': 'outstanding_shares',
+                        'branding.logo_url': 'logo_url'}
+                    )
+            .filter(items=[column for column in overview_map]))

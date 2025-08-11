@@ -13,6 +13,7 @@ def natural_join(
         :param how: Join type to be performed (e.g., inner, left, right, outer, cross)
         :return: Joined pd.DataFrame object.
     """
+
     master_df = pd.DataFrame()
 
     for df in dfs:
@@ -75,6 +76,7 @@ def percentile(
         :param series: pd.Series object passed from pd.series.agg()
         :return: Scalar value representing the 95th percentile in series.
     """
+
     sorted_series_values = sorted(series.to_list())
     percentile_index = int(len(sorted_series_values) * .95) - 1
 
@@ -96,6 +98,7 @@ def calculate_keltner_channels(
     :param spine: EMA window to base channels on.
     :param window: Number of rolling periods used in percentile window function.
     """
+
     if 'high' not in df.columns or 'low' not in df.columns or spine not in df.columns:
         raise ValueError('Base data needed for calculation not found. Please run get_price_action and/or get_ema '
                          'before running get_keltner_channels')
@@ -124,6 +127,7 @@ def calculate_impulse(
         :param df: Target pd.DataFrame
         :param spine: Designated spine for comparison against MACD Histogram.
     """
+    
     if 'macd_histogram' not in df.columns or spine not in df.columns:
         print('macd and/or ema spine was not found...')
         df['impulse'] = 'Red'

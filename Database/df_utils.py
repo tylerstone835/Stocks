@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pandas as pd
 
@@ -31,14 +31,24 @@ def natural_join(
 
 def timestamp_to_date(
     df: pd.DataFrame,
+    timespan: str = 'day',
 ) -> None:
     """
     Converts the unix[ms] timestamp column to a readable date column.
-
+    Weekly needs to be offset by one day to match market standards.
+    
     :param df: DataFrame containing a timestamp column.
+    :param timespan: Identifies if timestamp contains daily values, or weekly.
     """
 
     if 'timestamp' not in df.columns:
+        raise ValueError('timestamp not found in DataFrame object')
+
+    if timespan == 'week':
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df['timestamp'] = df['timestamp'] + timedelta(days=1)
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d')
+        df.rename(columns={'timestamp': 'date'}, inplace=True)
         return
 
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms').dt.strftime('%Y-%m-%d')
@@ -127,7 +137,7 @@ def calculate_impulse(
         :param df: Target pd.DataFrame
         :param spine: Designated spine for comparison against MACD Histogram.
     """
-    
+
     if 'macd_histogram' not in df.columns or spine not in df.columns:
         print('macd and/or ema spine was not found...')
         df['impulse'] = 'Red'

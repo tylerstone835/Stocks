@@ -1,13 +1,15 @@
 import asyncio
+from datetime import date
 import os
 
 import aiohttp
 import pandas as pd
+from polygon import RESTClient
 
 from table_maps import overview_map
 
 POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY')
-
+client = RESTClient()
 
 async def get_price_action(
     session: aiohttp.ClientSession,

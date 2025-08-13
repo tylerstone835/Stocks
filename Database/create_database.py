@@ -1,74 +1,104 @@
+import asyncio
 import os
 
-from dataframe import *
-from db_utils import create_table_from_map, insert_data
 from polygon_api import *
-from table_maps import price_fact_map
+from df_utils import *
+from db_utils import create_table_from_map, insert_data
+from table_maps import *
 
 
 def main():
-    DB_FILEPATH = os.environ.get('STOCK_DATABASE')
+    db_filepath = os.environ.get('STOCK_DATABASE')
 
     # Create daily SQL table.
     create_table_from_map(
-        db_filepath=DB_FILEPATH,
-        map=price_fact_map,
+        db_filepath=db_filepath,
+        map=daily_map,
         table_name='daily'
     )
 
     # Create weekly SQL table.
     create_table_from_map(
-        db_filepath=DB_FILEPATH,
-        map=price_fact_map,
+        db_filepath=db_filepath,
+        map=weekly_map,
         table_name='weekly'
     )
 
-    ticker_list = get_active_tickers()
+    # Create symbols SQL table.
+    create_table_from_map(
+        db_filepath=db_filepath,
+        map=overview_map,
+        table_name='symbols'
+    )
 
-    for ticker in ticker_list[:5]:
+    ticker_batches = get_active_tickers(batch_size=50)
 
-        # Construct daily pd.DataFrame for ticker and insert into table.
+    # Gather/Calculate ticker data for batch and insert into daily SQL table.
+    for batch_number, batch in enumerate(ticker_batches, 1):
         daily_df = natural_join(
-                       get_price_action(ticker=ticker),
-                       get_sma(ticker=ticker, window=50),
-                       get_ema(ticker=ticker, window=5),
-                       get_ema(ticker=ticker, window=10),
-                       get_ema(ticker=ticker, window=20),
-                       get_macd(ticker=ticker)
-                   )
+            asyncio.run(gather_price_action(*batch)),
+            asyncio.run(gather_sma(*batch, window=50)),
+            asyncio.run(gather_ema(*batch, window=5)),
+            asyncio.run(gather_ema(*batch, window=10)),
+            asyncio.run(gather_ema(*batch, window=20)),
+            asyncio.run(gather_macd(*batch))
+        )
 
-        calculate_keltner_channels(daily_df)
-        calculate_atr(daily_df)
-        calculate_impulse(daily_df)
-        timestamp_to_date(daily_df)
+        daily_df_list = []
+        for df in (daily_df[daily_df['symbol'] == symbol].copy()
+                   for symbol in daily_df['symbol'].unique()):
+
+            calculate_keltner_channels(df)
+            calculate_atr(df)
+            calculate_impulse(df)
+            timestamp_to_date(df)
+            df.dropna(inplace=True)
+
+            if not df.empty:
+                daily_df_list.append(df)
 
         insert_data(
-            df=daily_df,
+            df=pd.concat(daily_df_list),
             table_name='daily',
-            db_filepath=DB_FILEPATH
+            db_filepath=db_filepath
         )
 
-        # Construct weekly pd.DataFrame for ticker and insert into table.
+        # Gather/Calculate ticker data for batch and insert into weekly SQL table.
         weekly_df = natural_join(
-                        get_price_action(ticker=ticker, timespan='week'),
-                        get_sma(ticker=ticker, window=50, timespan='week'),
-                        get_ema(ticker=ticker, window=5, timespan='week'),
-                        get_ema(ticker=ticker, window=10, timespan='week'),
-                        get_ema(ticker=ticker, window=20, timespan='week'),
-                        get_macd(ticker=ticker, timespan='week')
-                    )
+            asyncio.run(gather_price_action(*batch, timespan='week')),
+            asyncio.run(gather_ema(*batch, window=5, timespan='week')),
+            asyncio.run(gather_ema(*batch, window=10, timespan='week')),
+            asyncio.run(gather_ema(*batch, window=20, timespan='week')),
+            asyncio.run(gather_macd(*batch, timespan='week'))
+        )
 
-        calculate_keltner_channels(weekly_df, window=26)
-        calculate_atr(weekly_df)
-        calculate_impulse(weekly_df)
-        timestamp_to_date(weekly_df)
+        weekly_df_list = []
+        for df in (weekly_df[weekly_df['symbol'] == symbol].copy()
+                   for symbol in weekly_df['symbol'].unique()):
+
+            calculate_keltner_channels(df, window=26)
+            calculate_atr(df)
+            calculate_impulse(df)
+            timestamp_to_date(df)
+            df.dropna(inplace=True)
+
+            if not df.empty:
+                weekly_df_list.append(df)
 
         insert_data(
-            df=weekly_df,
+            df=pd.concat(weekly_df_list),
             table_name='weekly',
-            db_filepath=DB_FILEPATH
+            db_filepath=db_filepath
         )
 
+        # Gather ticker data for batch and insert into overview SQL table.
+        overview_df = asyncio.run(gather_overview(*batch))
+
+        insert_data(
+            df=overview_df,
+            table_name='symbols',
+            db_filepath=db_filepath
+        )
 
 
 if __name__ == '__main__':

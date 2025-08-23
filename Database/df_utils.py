@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
+import holidays
 import pandas as pd
 
 
@@ -231,5 +232,7 @@ def calculate_date_table(
 
     df['is_market_holiday'] = df['date'].apply(lambda x: x in nyse_holidays)
     df['market_holiday'] = df['date'].apply(lambda x: nyse_holidays.get(x, None))
+
+    df['date'] = df['date'].astype('string')
 
     return df

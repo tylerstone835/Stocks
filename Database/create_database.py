@@ -1,13 +1,24 @@
 import asyncio
+import logging
 import os
 
 from polygon_api import *
 from df_utils import *
-from db_utils import create_table_from_map, insert_data
+from db_utils import *
 from table_maps import *
+
+logger = logging.getLogger(__name__)
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        filename='create.log',
+        filemode='w',
+        format='%(asctime)s:%(levelname)s:%(name)s:%(funcName)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
     db_filepath = os.environ.get('STOCK_DATABASE')
 
     # Create daily SQL table.
@@ -16,6 +27,7 @@ def main():
         map=daily_map,
         table_name='daily'
     )
+    logger.info('Daily SQL table built')
 
     # Create weekly SQL table.
     create_table_from_map(
@@ -23,6 +35,7 @@ def main():
         map=weekly_map,
         table_name='weekly'
     )
+    logger.info('Weekly SQL table built')
 
     # Create symbols SQL table.
     create_table_from_map(
@@ -30,11 +43,23 @@ def main():
         map=overview_map,
         table_name='symbols'
     )
+    logger.info('Symbols SQL table built')
 
+    # Create date_dimension SQL table.
+    create_table_from_map(
+        db_filepath=db_filepath,
+        map=date_dimension_map,
+        table_name='date_dimension'
+    )
+    logger.info('Date Dimension SQL table built')
+
+    # Gather/Batch active stock symbols.
     ticker_batches = get_active_tickers(batch_size=50)
+    number_of_batches = len(ticker_batches)
 
-    # Gather/Calculate ticker data for batch and insert into daily SQL table.
     for batch_number, batch in enumerate(ticker_batches, 1):
+
+        # Gather/Calculate ticker data for batch and insert into daily SQL table.
         daily_df = natural_join(
             asyncio.run(gather_price_action(*batch)),
             asyncio.run(gather_sma(*batch, window=50)),
@@ -52,16 +77,16 @@ def main():
             calculate_atr(df)
             calculate_impulse(df)
             timestamp_to_date(df)
-            df.dropna(inplace=True)
 
             if not df.empty:
                 daily_df_list.append(df)
 
         insert_data(
-            df=pd.concat(daily_df_list),
+            *daily_df_list,
             table_name='daily',
             db_filepath=db_filepath
         )
+        logger.info('Daily batch %s/%s loaded', batch_number, number_of_batches)
 
         # Gather/Calculate ticker data for batch and insert into weekly SQL table.
         weekly_df = natural_join(
@@ -79,26 +104,36 @@ def main():
             calculate_keltner_channels(df, window=26)
             calculate_atr(df)
             calculate_impulse(df)
-            timestamp_to_date(df)
-            df.dropna(inplace=True)
+            timestamp_to_date(df, timespan='week')
 
             if not df.empty:
                 weekly_df_list.append(df)
 
         insert_data(
-            df=pd.concat(weekly_df_list),
+            *weekly_df_list,
             table_name='weekly',
             db_filepath=db_filepath
         )
+        logger.info('Weekly batch %s/%s loaded', batch_number, number_of_batches)
 
         # Gather ticker data for batch and insert into overview SQL table.
         overview_df = asyncio.run(gather_overview(*batch))
 
         insert_data(
-            df=overview_df,
+            overview_df,
             table_name='symbols',
             db_filepath=db_filepath
         )
+        logger.info('Overview batch %s/%s loaded', batch_number, number_of_batches)
+
+    # Calculate date table and insert into date_dimension SQL table.
+    date_table_df = calculate_date_table()
+    insert_data(
+        date_table_df,
+        table_name='date_dimension',
+        db_filepath=db_filepath
+    )
+    logger.info('date_dimension table loaded')
 
 
 if __name__ == '__main__':

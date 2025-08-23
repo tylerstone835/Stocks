@@ -1,5 +1,5 @@
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 import os
 
 import aiohttp
@@ -8,16 +8,19 @@ from polygon import RESTClient
 
 from table_maps import overview_map
 
+START_DATE = date.today() - timedelta(days=365*5)
+END_DATE = date.today()
 POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY')
 client = RESTClient()
 
+
 async def get_price_action(
-    session: aiohttp.ClientSession,
-    ticker: str = 'MSFT',
-    multiplier: int = 1,
-    timespan: str = 'day',
-    from_: str = '1970-01-01',
-    to: str = '3000-01-01',
+        session: aiohttp.ClientSession,
+        ticker: str = 'MSFT',
+        multiplier: int = 1,
+        timespan: str = 'day',
+        from_: str | date = START_DATE,
+        to: str | date = END_DATE,
 ) -> pd.DataFrame:
     """
     Asynchronous coroutine that retrieves custom price action aggregations for
@@ -43,11 +46,11 @@ async def get_price_action(
 
 
 async def gather_price_action(
-    *ticker_batch,
-    multiplier: int = 1,
-    timespan: str = 'day',
-    from_: str = '1970-01-01',
-    to: str = '3000-01-01',
+        *ticker_batch,
+        multiplier: int = 1,
+        timespan: str = 'day',
+        from_: str | date = START_DATE,
+        to: str | date = END_DATE,
 ) -> pd.DataFrame:
     """
     Using get_price_action(), gather price action dataframes asynchronously.
@@ -82,11 +85,11 @@ async def gather_price_action(
 
 
 async def get_sma(
-    session: aiohttp.ClientSession,
-    ticker: str = 'MSFT',
-    timespan: str = 'day',
-    window: int = 10,
-    timestamp_gte: str = '1970-01-01',
+        session: aiohttp.ClientSession,
+        ticker: str = 'MSFT',
+        timespan: str = 'day',
+        window: int = 10,
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Asynchronous coroutine that retrieves simple moving average data for a designated
@@ -115,10 +118,10 @@ async def get_sma(
 
 
 async def gather_sma(
-    *ticker_batch,
-    timespan: str = 'day',
-    window: int = 10,
-    timestamp_gte: str = '1970-01-01',
+        *ticker_batch,
+        timespan: str = 'day',
+        window: int = 10,
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Using get_sma(), gather SMA dataframes asynchronously.
@@ -141,11 +144,11 @@ async def gather_sma(
 
 
 async def get_ema(
-    session: aiohttp.ClientSession,
-    ticker: str = 'MSFT',
-    timespan: str = 'day',
-    window: int = 10,
-    timestamp_gte: str = '1970-01-01',
+        session: aiohttp.ClientSession,
+        ticker: str = 'MSFT',
+        timespan: str = 'day',
+        window: int = 10,
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Asynchronous coroutine that retrieves exponential moving average data for a designated
@@ -174,10 +177,10 @@ async def get_ema(
 
 
 async def gather_ema(
-    *ticker_batch,
-    timespan: str = 'day',
-    window: int = 10,
-    timestamp_gte: str = '1970-01-01',
+        *ticker_batch,
+        timespan: str = 'day',
+        window: int = 10,
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Using get_ema(), gather EMA dataframes asynchronously.
@@ -200,10 +203,10 @@ async def gather_ema(
 
 
 async def get_macd(
-    session: aiohttp.ClientSession,
-    ticker: str = 'MSFT',
-    timespan: str = 'day',
-    timestamp_gte: str = '1970-01-01',
+        session: aiohttp.ClientSession,
+        ticker: str = 'MSFT',
+        timespan: str = 'day',
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Asynchronous coroutine that retrieves moving average convergence/divergence data
@@ -231,9 +234,9 @@ async def get_macd(
 
 
 async def gather_macd(
-    *ticker_batch,
-    timespan: str = 'day',
-    timestamp_gte: str = '1970-01-01',
+        *ticker_batch,
+        timespan: str = 'day',
+        timestamp_gte: str | date = START_DATE,
 ) -> pd.DataFrame:
     """
     Using get_macd(), gather MACD dataframes asynchronously.
@@ -252,12 +255,13 @@ async def gather_macd(
     return (pd.concat(df_array)
             .assign(histogram=lambda x: x.histogram.round(7))
             .rename(columns={'histogram': 'macd_histogram'})
-            .filter(items=['timestamp', 'symbol', 'macd_histogram']))
+            .filter(items=['timestamp', 'symbol', 'macd_histogram'])
+            )
 
 
 async def get_overview(
-    session: aiohttp.ClientSession,
-    ticker: str = 'MSFT',
+        session: aiohttp.ClientSession,
+        ticker: str = 'MSFT',
 ) -> pd.DataFrame:
     """
     Asynchronous coroutine that retrieves basic company information.
@@ -282,7 +286,7 @@ async def get_overview(
 
 
 async def gather_overview(
-    *ticker_batch
+        *ticker_batch
 ) -> pd.DataFrame:
     """
     Using get_overview(), gather overview dataframes asynchronously.
@@ -297,17 +301,17 @@ async def gather_overview(
 
     return (pd.json_normalize(df_array)
             .rename(columns={
-                        'ticker': 'symbol',
-                        'share_class_shares_outstanding': 'outstanding_shares',
-                        'branding.logo_url': 'logo_url'}
-                    )
+        'ticker': 'symbol',
+        'share_class_shares_outstanding': 'outstanding_shares',
+        'branding.logo_url': 'logo_url'}
+    )
             .filter(items=[column for column in overview_map]))
 
 
 def get_active_tickers(
-    ticker_type: str = 'CS',
-    market: str = 'stocks',
-    batch_size: int = 50,
+        ticker_type: str = 'CS',
+        market: str = 'stocks',
+        batch_size: int = 50,
 ) -> list[str]:
     """
     Cross-references tickers listed as active in Polygon database and tickers traded

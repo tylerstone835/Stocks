@@ -36,7 +36,7 @@ def timestamp_to_date(
     """
     Converts the unix[ms] timestamp column to a readable date column.
     Weekly needs to be offset by one day to match market standards.
-    
+
     :param df: DataFrame containing a timestamp column.
     :param timespan: Identifies if timestamp contains daily values, or weekly.
     """
@@ -186,3 +186,50 @@ def calculate_atr(
     df['atr'] = df['pre_atr'].rolling(window).mean().round(3)
 
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)
+
+
+START_DATE = date.today() - timedelta(days=365*5)
+END_DATE = date.today()
+
+
+def calculate_date_table(
+    start: date = START_DATE,
+    end: date = END_DATE
+) -> pd.DataFrame:
+    """
+    Calculates a date table for SQL database with overridable start, end dates.
+
+    :param start: Start date for the date table.
+    :param end: End date for the date table.
+    :return: pd.DataFrame containing calculated date table.
+    """
+
+    us_holidays = holidays.country_holidays('US')
+    nyse_holidays = holidays.financial_holidays('NYSE')
+
+    df = pd.DataFrame({'date': pd.date_range(start=start, end=end)})
+    df['description'] = df['date'].apply(lambda x: x.strftime('%B %#d, %Y'))
+    df['day'] = df['date'].apply(lambda x: x.day_name())
+    df['day_of_week'] = df['date'].apply(lambda x: x.day_of_week)
+    df['day_of_month'] = df['date'].apply(lambda x: x.day)
+    df['day_of_year'] = df['date'].apply(lambda x: x.day_of_year)
+
+    df['week_number'] = df['date'].apply(lambda x: x.week)
+
+    df['month'] = df['date'].apply(lambda x: x.month_name())
+    df['month_number'] = df['date'].apply(lambda x: x.month)
+    df['is_month_start'] = df['date'].apply(lambda x: x.is_month_start)
+    df['is_month_end'] = df['date'].apply(lambda x: x.is_month_end)
+
+    df['year'] = df['date'].apply(lambda x: x.year)
+    df['is_year_start'] = df['date'].apply(lambda x: x.is_year_start)
+    df['is_year_end'] = df['date'].apply(lambda x: x.is_year_end)
+    df['is_leap_year'] = df['date'].apply(lambda x: x.is_leap_year)
+
+    df['is_holiday'] = df['date'].apply(lambda x: x in us_holidays)
+    df['holiday'] = df['date'].apply(lambda x: us_holidays.get(x, None))
+
+    df['is_market_holiday'] = df['date'].apply(lambda x: x in nyse_holidays)
+    df['market_holiday'] = df['date'].apply(lambda x: nyse_holidays.get(x, None))
+
+    return df

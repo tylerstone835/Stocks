@@ -188,3 +188,83 @@ overview_map = {
         'constraint': ''
     }
 }
+
+
+date_dimension_map = {
+    'date': {
+        'dtype': 'DATE',
+        'constraint': 'PRIMARY KEY'
+    },
+    'description': {
+        'dtype': 'VARCHAR(20)',
+        'constraint': 'NOT NULL'
+    },
+    'day': {
+        'dtype': 'VARCHAR(10)',
+        'constraint': 'NOT NULL'
+    },
+    'day_of_week': {
+        'dtype': 'NUMBER(1, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'day_of_month': {
+        'dtype': 'NUMBER(2, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'day_of_year': {
+        'dtype': 'NUMBER(3, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'week_number': {
+        'dtype': 'NUMBER(2, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'month': {
+        'dtype': 'VARCHAR(10)',
+        'constraint': 'NOT NULL'
+    },
+    'month_number': {
+        'dtype': 'NUMBER(2, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'is_month_start': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'is_month_end': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'year': {
+        'dtype': 'NUMBER(4, 0)',
+        'constraint': 'NOT NULL'
+    },
+    'is_year_start': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'is_year_end': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'is_leap_year': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'is_holiday': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'holiday': {
+        'dtype': 'VARCHAR(100)',
+        'constraint': 'NOT NULL'
+    },
+    'is_market_holiday': {
+        'dtype': 'BOOLEAN',
+        'constraint': 'NOT NULL'
+    },
+    'market_holiday': {
+        'dtype': 'VARCHAR(100)',
+        'constraint': 'NOT NULL'
+    }
+}

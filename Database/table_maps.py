@@ -257,7 +257,7 @@ date_dimension_map = {
     },
     'holiday': {
         'dtype': 'VARCHAR(100)',
-        'constraint': 'NOT NULL'
+        'constraint': ''
     },
     'is_market_holiday': {
         'dtype': 'BOOLEAN',
@@ -265,6 +265,6 @@ date_dimension_map = {
     },
     'market_holiday': {
         'dtype': 'VARCHAR(100)',
-        'constraint': 'NOT NULL'
+        'constraint': ''
     }
 }

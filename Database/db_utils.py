@@ -1,7 +1,19 @@
 import os
+import warnings
 
 import pandas as pd
 import sqlite3
+
+
+"""
+Supressing the futurewarning regarding the future behavior of pd.concat.
+pd.DataFrame objects with blank/null values is expected and allowed in this
+use case.
+"""
+warnings.filterwarnings(
+    "ignore",
+    message=".*dataframe concatenation with empty or all-na entries is deprecated.*"
+)
 
 
 def create_table_from_map(
@@ -44,7 +56,7 @@ def create_table_from_map(
 
 
 def insert_data(
-    df: pd.DataFrame,
+    *dfs: pd.DataFrame,
     table_name: str,
     db_filepath: str
 ) -> None:
@@ -55,6 +67,9 @@ def insert_data(
     :param table_name: Table to insert data into.
     :param db_filepath: Filepath of target database.
     """
+
+    df = pd.concat(dfs)
+
     binders = ', '.join(['?' for _ in df.columns])
 
     with sqlite3.connect(db_filepath) as conn:

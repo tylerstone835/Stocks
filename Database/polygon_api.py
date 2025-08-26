@@ -7,6 +7,7 @@ import pandas as pd
 from polygon import RESTClient
 from polygon.exceptions import BadResponse
 
+from df_utils import natural_join
 from table_maps import overview_map
 
 START_DATE = date.today() - timedelta(days=365*5)
@@ -349,15 +350,15 @@ def get_active_tickers(
 
 
 def get_daily_market_snapshot(
-    snap_date: date
+    snap_date: date | str
 ) -> pd.DataFrame:
     """
     Returns price action data for entire stock market for designated date.
-    :param snap_date: Target date for snapshot.
 
+    :param snap_date: Target date for snapshot.
     :return: pd.DataFrame containing formatted data.
     """
-    client = RESTClient(api_key=os.environ.get('POLYGON_API_KEY'))
+
     try:
         response = client.get_grouped_daily_aggs(market_type='stocks', date=snap_date)
     except BadResponse:
@@ -370,3 +371,48 @@ def get_daily_market_snapshot(
             .filter(items=['timestamp', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
             .rename(columns={'timestamp': 'date', 'ticker': 'symbol'})
             .assign(date=lambda x: pd.to_datetime(x.date, unit='ms').dt.strftime('%Y-%m-%d')))
+
+
+def get_weekly_market_snapshot(
+    snap_date: date
+) -> pd.DataFrame:
+    """
+    Returns weekly price action data for designated week.
+
+    :param snap_date: A date on monday to represent the week.
+    :return: pd.DataFrame containing formatted data.
+    """
+
+    if snap_date.weekday() != 0:
+        raise ValueError('Date must be a monday to represent the entire week properly.')
+
+    date_array = [(snap_date + timedelta(days=i)) for i in range(5)]
+
+    # Aggregate price action for designated week.
+    df_array = []
+    for day in date_array:
+
+        if day > date.today():
+            continue
+
+        day_df = get_daily_market_snapshot(day)
+
+        if not day_df.empty:
+            df_array.append(day_df)
+
+    if not df_array:
+        return pd.DataFrame()
+
+    df = pd.concat(df_array).astype(dtype={'date': 'datetime64[ns]'})
+
+    # Construct weekly period by combining open from min date, close from max date and high/low from any date.
+    open_df = df[df['date'] == df['date'].min()][['symbol', 'open']]
+    close_df = df[df['date'] == df['date'].max()][['symbol', 'close']]
+    high_low_df = df[['symbol', 'high', 'low', 'volume']].groupby('symbol', as_index=False).agg(func={'high': 'max',
+                                                                                                      'low': 'min',
+                                                                                                      'volume': 'sum'})
+    weekly_df = natural_join(open_df, close_df, high_low_df, how='inner')
+    weekly_df['date'] = snap_date.strftime('%Y-%m-%d')
+    weekly_df = weekly_df.filter(items=[column for column in df.columns])
+
+    return weekly_df

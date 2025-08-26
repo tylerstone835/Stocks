@@ -5,6 +5,7 @@ import os
 import aiohttp
 import pandas as pd
 from polygon import RESTClient
+from polygon.exceptions import BadResponse
 
 from table_maps import overview_map
 
@@ -338,15 +339,34 @@ def get_active_tickers(
     recent_series = pd.DataFrame(response)['ticker']
 
     ticker_list = (
-        pd.merge(
-            left=active_series,
-            right=recent_series,
-            how='inner',
-            on='ticker'
-        )
+        pd.merge(left=active_series, right=recent_series, how='inner', on='ticker')
         .drop_duplicates()
         ['ticker']
         .to_list()
     )
 
     return [ticker_list[i: i + batch_size] for i in range(0, len(ticker_list), batch_size)]
+
+
+def get_daily_market_snapshot(
+    snap_date: date
+) -> pd.DataFrame:
+    """
+    Returns price action data for entire stock market for designated date.
+    :param snap_date: Target date for snapshot.
+
+    :return: pd.DataFrame containing formatted data.
+    """
+    client = RESTClient(api_key=os.environ.get('POLYGON_API_KEY'))
+    try:
+        response = client.get_grouped_daily_aggs(market_type='stocks', date=snap_date)
+    except BadResponse:
+        return pd.DataFrame()
+
+    if not response:
+        return pd.DataFrame()
+
+    return (pd.DataFrame(response)
+            .filter(items=['timestamp', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
+            .rename(columns={'timestamp': 'date', 'ticker': 'symbol'})
+            .assign(date=lambda x: pd.to_datetime(x.date, unit='ms').dt.strftime('%Y-%m-%d')))

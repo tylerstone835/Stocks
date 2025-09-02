@@ -1,9 +1,12 @@
+from datetime import date, datetime, timedelta
 import os
 import warnings
 
 import pandas as pd
 import sqlite3
 
+
+DB_FILEPATH = os.environ.get('STOCK_DATABASE')
 
 """
 Supressing the futurewarning regarding the future behavior of pd.concat.
@@ -17,7 +20,6 @@ warnings.filterwarnings(
 
 
 def create_table_from_map(
-    db_filepath: str,
     table_name: str,
     map: dict,
 ) -> None:
@@ -25,7 +27,6 @@ def create_table_from_map(
     Parses information from map to construct/execute a create table statement
     in designated SQLite database.
 
-    :param db_filepath: filepath to target database.
     :param table_name: Name for created table.
     :param map: dict object containing column names (keys) and dtype/constraint values.
     """
@@ -46,7 +47,7 @@ def create_table_from_map(
         );
     """
 
-    with sqlite3.connect(db_filepath) as conn:
+    with sqlite3.connect(DB_FILEPATH) as conn:
         cursor = conn.cursor()
 
         cursor.execute('BEGIN TRANSACTION;')
@@ -58,23 +59,51 @@ def create_table_from_map(
 def insert_data(
     *dfs: pd.DataFrame,
     table_name: str,
-    db_filepath: str
 ) -> None:
     """
     Insert pd.DataFrame into target SQL table.
 
     :param df: Data to insert.
     :param table_name: Table to insert data into.
-    :param db_filepath: Filepath of target database.
     """
 
     df = pd.concat(dfs)
 
     binders = ', '.join(['?' for _ in df.columns])
 
-    with sqlite3.connect(db_filepath) as conn:
+    with sqlite3.connect(DB_FILEPATH) as conn:
         cursor = conn.cursor()
 
         cursor.execute('BEGIN TRANSACTION;')
         cursor.executemany(f'INSERT INTO {table_name} VALUES({binders})', df.values)
         cursor.execute('COMMIT;')
+
+
+def get_missing_days(
+    table_name: str
+) -> list[date]:
+    """
+    Identifies how many days of data is missing from database table.
+    Does not include Saturday/Sundays in response array.
+
+    :param table_name: Name of target SQL table.
+    :return: array of datetime.date that are missing from DB.
+    """
+
+    with sqlite3.connect(DB_FILEPATH) as conn:
+        cursor = conn.cursor()
+        response = cursor.execute(f'SELECT MAX(date) FROM {table_name}')
+
+    if not response:
+        return []
+
+    last_date = datetime.strptime(response.fetchone()[0], '%Y-%m-%d').date()
+    today = date.today()
+
+    date_array = []
+    for i in range((today - last_date).days):
+        new_date = last_date + timedelta(days=i + 1)
+        if new_date.weekday() < 5:
+            date_array.append(new_date)
+
+    return date_array

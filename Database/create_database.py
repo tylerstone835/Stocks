@@ -19,11 +19,8 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    db_filepath = os.environ.get('STOCK_DATABASE')
-
     # Create daily SQL table.
     create_table_from_map(
-        db_filepath=db_filepath,
         map=daily_map,
         table_name='daily'
     )
@@ -31,7 +28,6 @@ def main():
 
     # Create weekly SQL table.
     create_table_from_map(
-        db_filepath=db_filepath,
         map=weekly_map,
         table_name='weekly'
     )
@@ -39,7 +35,6 @@ def main():
 
     # Create symbols SQL table.
     create_table_from_map(
-        db_filepath=db_filepath,
         map=overview_map,
         table_name='symbols'
     )
@@ -47,7 +42,6 @@ def main():
 
     # Create date_dimension SQL table.
     create_table_from_map(
-        db_filepath=db_filepath,
         map=date_dimension_map,
         table_name='date_dimension'
     )
@@ -83,8 +77,7 @@ def main():
 
         insert_data(
             *daily_df_list,
-            table_name='daily',
-            db_filepath=db_filepath
+            table_name='daily'
         )
         logger.info('Daily batch %s/%s loaded', batch_number, number_of_batches)
 
@@ -111,8 +104,7 @@ def main():
 
         insert_data(
             *weekly_df_list,
-            table_name='weekly',
-            db_filepath=db_filepath
+            table_name='weekly'
         )
         logger.info('Weekly batch %s/%s loaded', batch_number, number_of_batches)
 
@@ -121,8 +113,7 @@ def main():
 
         insert_data(
             overview_df,
-            table_name='symbols',
-            db_filepath=db_filepath
+            table_name='symbols'
         )
         logger.info('Overview batch %s/%s loaded', batch_number, number_of_batches)
 
@@ -130,8 +121,7 @@ def main():
     date_table_df = calculate_date_table()
     insert_data(
         date_table_df,
-        table_name='date_dimension',
-        db_filepath=db_filepath
+        table_name='date_dimension'
     )
     logger.info('date_dimension table loaded')
 

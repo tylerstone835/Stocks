@@ -367,10 +367,15 @@ def get_daily_market_snapshot(
     if not response:
         return pd.DataFrame()
 
-    return (pd.DataFrame(response)
-            .filter(items=['timestamp', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
-            .rename(columns={'timestamp': 'date', 'ticker': 'symbol'})
-            .assign(date=lambda x: pd.to_datetime(x.date, unit='ms').dt.strftime('%Y-%m-%d')))
+    daily_df = (
+        pd.DataFrame(response)
+        .filter(items=['timestamp', 'ticker', 'open', 'high', 'low', 'close', 'volume'])
+        .rename(columns={'timestamp': 'date', 'ticker': 'symbol'})
+        .assign(date=lambda x: pd.to_datetime(x.date, unit='ms').dt.strftime('%Y-%m-%d'))
+    )
+    daily_df[['open', 'high', 'low', 'close', 'volume']] = daily_df[['open', 'high', 'low', 'close', 'volume']].round(3)
+
+    return daily_df
 
 
 def get_weekly_market_snapshot(

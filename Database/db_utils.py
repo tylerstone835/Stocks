@@ -10,8 +10,7 @@ DB_FILEPATH = os.environ.get('STOCK_DATABASE')
 
 """
 Suppressing the futurewarning regarding the future behavior of pd.concat.
-pd.DataFrame objects with blank/null values is expected and allowed in this
-use case.
+pd.DataFrame objects with blank/null values is expected in this use case.
 """
 warnings.filterwarnings(
     "ignore",
@@ -80,7 +79,7 @@ def insert_data(
 
 
 def get_missing_days(
-    table_name: str = 'daily'
+    table_name: str = 'daily',
 ) -> list[date]:
     """
     Identifies how many days of data is missing from database table.
@@ -108,7 +107,7 @@ def get_missing_days(
 
 
 def get_missing_weeks(
-    table_name: str = 'weekly'
+    table_name: str = 'weekly',
 ) -> list[date]:
     """
     Identifies how many weeks of data is missing from database table.

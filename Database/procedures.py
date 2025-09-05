@@ -4,6 +4,7 @@ import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
+from queries import update_sma_query
 
 
 def update_daily_price_action() -> None:
@@ -69,3 +70,30 @@ def update_weekly_price_action() -> None:
             conn.commit()
 
         print(f'Week {missing_week} loaded into DB')
+
+
+def update_sma(
+    window: int,
+    table: str,
+) -> None:
+    """
+    Finds symbols in DB with enough data to calculate sma if they are NULL.
+
+    :param window: Target SMA column.
+    :param table: Target table to update SMA values for.
+    """
+
+    with sqlite3.connect(DB_FILEPATH) as conn:
+        df = pd.read_sql_query(sql=update_sma_query(window, table), con=conn)
+
+    if df.empty:
+        return
+
+    df[f'sma_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(3)
+    df = df.dropna(subset=[f'sma_{window}']).filter(items=[f'sma_{window}', 'symbol', 'date'])
+
+    with sqlite3.connect(DB_FILEPATH) as conn:
+        cursor = conn.cursor()
+
+        cursor.executemany(f'UPDATE {table} SET sma_{window} = ? WHERE symbol = ? AND date = ?', df.values)
+        conn.commit()

@@ -43,7 +43,7 @@ def main():
     # Create date_dimension SQL table.
     create_table_from_map(
         map=date_dimension_map,
-        table_name='date_dimension'
+        table_name='calendar'
     )
     logger.info('Date Dimension SQL table built')
 

@@ -3,8 +3,9 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
+from df_utils import calculate_sma
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
-from queries import update_sma_query
+from queries import update_sma_query, start_ema_query
 
 
 def update_daily_price_action() -> None:
@@ -83,17 +84,19 @@ def update_sma(
     :param table: Target table to update SMA values for.
     """
 
-    with sqlite3.connect(DB_FILEPATH) as conn:
-        df = pd.read_sql_query(sql=update_sma_query(window, table), con=conn)
+    conn = sqlite3.connect(DB_FILEPATH)
+
+    df = pd.read_sql_query(sql=update_sma_query(window, table), con=conn)
 
     if df.empty:
         return
 
-    df[f'sma_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(3)
+    calculate_sma(df=df, window=window)
     df = df.dropna(subset=[f'sma_{window}']).filter(items=[f'sma_{window}', 'symbol', 'date'])
 
-    with sqlite3.connect(DB_FILEPATH) as conn:
-        cursor = conn.cursor()
+    cursor = conn.cursor()
+    cursor.executemany(f'UPDATE {table} SET sma_{window} = ? WHERE symbol = ? AND date = ?', df.values)
+    conn.commit()
+    conn.close()
 
-        cursor.executemany(f'UPDATE {table} SET sma_{window} = ? WHERE symbol = ? AND date = ?', df.values)
-        conn.commit()
+    print(f'{table} SMAs updated...')

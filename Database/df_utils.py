@@ -236,3 +236,24 @@ def calculate_date_table(
     df['date'] = df['date'].astype('string')
 
     return df
+
+
+def calculate_sma(
+    df: pd.DataFrame,
+    window: int,
+) -> pd.DataFrame:
+    """
+    Calculate a Simple Moving Average for a selected window size and
+    add series to pd.DataFrame inplace. 'close' and 'symbol' columns
+    must be present in df argument. Date does not need to be included,
+    so make sure directional sorting is handled prior to calculating sma.
+
+    :param df: pd.DataFrame to calculate and add SMA column to.
+    :param window: Designated window/size for SMA calculation.
+    :return: Submitted pd.DataFrame with new SMA column.
+    """
+
+    if 'close' not in df.columns and 'symbol' not in df.columns:
+        raise ValueError('close/symbol data not found in pd.DataFrame')
+
+    df[f'sma_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(3)

@@ -59,9 +59,10 @@ def natural_join(
 ) -> pd.DataFrame | None:
     """
     Merges two pd.DataFrame objects based on overlapping column labels.
-        :param *dfs: One or many dataframe objects to naturally join.
-        :param how: Join type to be performed (e.g., inner, left, right, outer, cross)
-        :return: Joined pd.DataFrame object.
+
+    :param *dfs: One or many dataframe objects to naturally join.
+    :param how: Join type to be performed (e.g., inner, left, right, outer, cross)
+    :return: Joined pd.DataFrame object.
     """
 
     master_df = pd.DataFrame()
@@ -133,8 +134,9 @@ def percentile(
     Custom pd.Agg function to apply as a rolling window function.
     This will return the value that defines the 95th percentile limit
     over a specified rolling period.
-        :param series: pd.Series object passed from pd.series.agg()
-        :return: Scalar value representing the 95th percentile in series.
+
+    :param series: pd.Series object passed from pd.series.agg()
+    :return: Scalar value representing the 95th percentile in series.
     """
 
     sorted_series_values = sorted(series.to_list())
@@ -184,8 +186,9 @@ def calculate_impulse(
     column and a designated spine. Spine is usually the intermediate period EMA,
     or the 10 period EMA. Will raise a ValueError if macd data or ema data is
     not found in object's dataframe.
-        :param df: Target pd.DataFrame
-        :param spine: Designated spine for comparison against MACD Histogram.
+
+    :param df: Target pd.DataFrame
+    :param spine: Designated spine for comparison against MACD Histogram.
     """
 
     if 'macd_histogram' not in df.columns or spine not in df.columns:
@@ -216,8 +219,9 @@ def calculate_atr(
     """
     Adds ATR indicator data to the batch. If price action data (high, low, close) is
     not found in df, it will raise a ValueError. Uses SMA, not WMA.
-        :param df: Target DataFrame.
-        :param window: rolling period for ATR average.
+
+    :param df: Target DataFrame.
+    :param window: rolling period for ATR average.
     """
     if 'close' not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
         print('Price action data was not found...')
@@ -236,3 +240,20 @@ def calculate_atr(
     df['atr'] = df['pre_atr'].rolling(window).mean().round(3)
 
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)
+
+
+def calculate_ema_start(
+    df: pd.DataFrame,
+    window: int,
+) -> None:
+    """
+    Creates column label and calculates the starting value for an EMA window.
+
+    :param df: Target pd.DataFrame
+    :param window: Rolling period for SMA
+    """
+
+    if 'close' not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('close or symbol not found in dataframe')
+
+    df[f'ema_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(2)

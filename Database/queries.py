@@ -155,3 +155,99 @@ def start_ema_query(
         symbol,
         date
     """
+
+
+def end_ema_query(
+    window: int,
+    table: str,
+) -> str:
+    """
+    Return the symbols that have their ema started, but have
+    NULL values that need to be calculated.
+
+    :param window: EMA window.
+    :param table: Target table to calculate EMA values for.
+    :return: Formatted query.
+    """
+
+    return f"""
+    /*
+    Return Stocks that have the minimum number of records required
+    to calculate the end of desired EMA window.
+    */
+
+    WITH CTE_QUALIFYING_STOCKS
+    AS
+    (
+    SELECT
+        symbol
+    FROM
+        {table}
+    GROUP BY
+        symbol
+    HAVING
+        COUNT(*) > {window}
+    )
+
+    /*
+    Return base data necessary to calculate desired EMA/update records.
+    Row number, relative to the stock symbol, is added to perform an
+    offset later in the query.
+    */
+    , CTE_RANKED_DATA
+    AS
+    (
+    SELECT
+        date,
+        symbol,
+        close,
+        ema_{window},
+        ROW_NUMBER() OVER (PARTITION BY symbol) AS 'row'
+    FROM
+        {table}
+    WHERE
+        symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
+    ORDER BY
+        symbol,
+        date
+    )
+    /*
+    Identifies the first blank EMA row AFTER the minimum records required to
+    calculate. This first row number is then offset by one, guaranteeing
+    enough base data to calculate all missing EMA rows for each symbol.
+    */
+    ,CTE_ROW_REFERENCE
+    AS
+    (
+    SELECT
+        symbol,
+        MIN(row) - 1 AS 'starting_row'
+    FROM
+        CTE_RANKED_DATA
+    WHERE
+        row > {window}
+        AND ema_{window} IS NULL
+    GROUP BY
+        symbol
+    )
+
+    /*
+    Return every qualifying stock with missing SMA data, along with enough previous records
+    to calculate the missing values.
+    */
+    SELECT
+        data.date,
+        data.symbol,
+        data.close,
+        data.ema_{window}
+    FROM
+        CTE_RANKED_DATA data
+    INNER JOIN
+        CTE_ROW_REFERENCE row_ref
+            ON data.symbol = row_ref.symbol
+    WHERE
+       data.row >= row_ref.starting_row
+    ORDER BY
+        data.symbol,
+        data.date;
+    """

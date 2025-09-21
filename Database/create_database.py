@@ -19,40 +19,24 @@ def main():
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # Create daily SQL table.
-    create_table_from_map(
-        map=daily_map,
-        table_name='daily'
-    )
-    logger.info('Daily SQL table built')
+    # Create SQL tables.
+    sql_table_dict = {
+        'daily': daily_map,
+        'weekly': weekly_map,
+        'symbols': overview_map,
+        'calendar': date_dimension_map
+    }
+    for table_name, table_map in sql_table_dict.items():
+        create_table_from_map(map=table_map, table_name=table_name)
+        logger.info('%s SQL table built', table_name)
 
-    # Create weekly SQL table.
-    create_table_from_map(
-        map=weekly_map,
-        table_name='weekly'
-    )
-    logger.info('Weekly SQL table built')
-
-    # Create symbols SQL table.
-    create_table_from_map(
-        map=overview_map,
-        table_name='symbols'
-    )
-    logger.info('Symbols SQL table built')
-
-    # Create date_dimension SQL table.
-    create_table_from_map(
-        map=date_dimension_map,
-        table_name='calendar'
-    )
-    logger.info('Date Dimension SQL table built')
-
-    # Gather/Batch active stock symbols.
+    # Batch active stock symbols.
     ticker_batches = get_active_tickers(batch_size=50)
     number_of_batches = len(ticker_batches)
 
     for batch_number, batch in enumerate(ticker_batches, 1):
 
+        # _____________________________ daily table _____________________________
         # Gather/Calculate ticker data for batch and insert into daily SQL table.
         daily_df = natural_join(
             asyncio.run(gather_price_action(*batch)),
@@ -81,6 +65,7 @@ def main():
         )
         logger.info('Daily batch %s/%s loaded', batch_number, number_of_batches)
 
+        # _____________________________ weekly table _____________________________
         # Gather/Calculate ticker data for batch and insert into weekly SQL table.
         weekly_df = natural_join(
             asyncio.run(gather_price_action(*batch, timespan='week')),
@@ -108,6 +93,7 @@ def main():
         )
         logger.info('Weekly batch %s/%s loaded', batch_number, number_of_batches)
 
+        # ________________________ symbols table ________________________
         # Gather ticker data for batch and insert into overview SQL table.
         overview_df = asyncio.run(gather_overview(*batch))
 
@@ -117,6 +103,7 @@ def main():
         )
         logger.info('Overview batch %s/%s loaded', batch_number, number_of_batches)
 
+    # _______________________ calendar table _______________________
     # Calculate date table and insert into date_dimension SQL table.
     date_table_df = calculate_date_table()
     insert_data(

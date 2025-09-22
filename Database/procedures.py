@@ -3,8 +3,9 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
+from df_utils import calculate_ema_start, calculate_ema_end
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
-from queries import update_sma_query, start_ema_query
+from queries import update_sma_query, start_ema_query, end_ema_query
 
 
 def update_daily_price_action() -> None:
@@ -78,6 +79,7 @@ def update_sma(
 ) -> None:
     """
     Finds symbols in DB with enough data to calculate sma if they are NULL.
+    Insert calculated SMA values into target SQL table.
 
     :param window: Target SMA column.
     :param table: Target table to update SMA values for.
@@ -99,3 +101,43 @@ def update_sma(
     conn.close()
 
     print(f'{table} SMAs updated...')
+
+
+def update_ema(
+    window: int,
+    table: str,
+):
+    """
+    Finds symbols in DB with enough data to calculate ema if they are NULL.
+    Insert calculated EMA values into target SQL table.
+
+    :param window: Target EMA column.
+    :param table: Target table to update EMA values for.
+    """
+
+    conn = sqlite3.connect(DB_FILEPATH)
+    cursor = conn.cursor()
+
+    start_df = pd.read_sql_query(sql=start_ema_query(window, table), con=conn)
+
+    if not start_df.empty:
+
+        calculate_ema_start(df=start_df, window=window)
+        start_df = start_df.dropna(subset=[f'ema_{window}']).filter(items=[f'ema_{window}', 'symbol', 'date'])
+
+        cursor.executemany(f'UPDATE {table} SET ema_{window} = ? WHERE symbol = ? AND date = ?', start_df.values)
+        conn.commit()
+
+    end_df = pd.read_sql_query(sql=end_ema_query(window, table), con=conn)
+
+    if not end_df.empty:
+
+        calculate_ema_end(df=end_df, window=window, start_row=1)
+        end_df = end_df.filter(items=[f'ema_{window}', 'symbol', 'date'])
+
+        cursor.executemany(f'UPDATE {table} SET ema_{window} = ? WHERE symbol = ? AND date = ?', end_df.values)
+        conn.commit()
+
+    conn.close()
+
+    print(f'{table} EMA_{window}s updated...')

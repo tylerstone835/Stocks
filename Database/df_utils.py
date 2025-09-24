@@ -304,3 +304,20 @@ def calculate_ema_end(
         symbol_row += 1
 
     df[f'ema_{window}'] = df[f'ema_{window}'].round(2)
+
+
+def calculate_ema(
+    df: pd.DataFrame,
+    window: int,
+    price_column: str = 'close',
+) -> None:
+    """
+    Calculate entire EMA column for a designated df and window.
+
+    :param df: Target pd.DataFrame
+    :param window: Number of closing periods used in EMA
+    :param price_column: Column to use when calculating EMA
+    """
+
+    calculate_ema_start(df=df, window=window, price_column=price_column)
+    calculate_ema_end(df=df, window=window, start_row=window, price_column=price_column)

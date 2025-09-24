@@ -245,24 +245,27 @@ def calculate_atr(
 def calculate_ema_start(
     df: pd.DataFrame,
     window: int,
+    price_column: str = 'close',
 ) -> None:
     """
     Creates column label and calculates the starting value for an EMA window.
 
     :param df: Target pd.DataFrame
     :param window: Number of closing periods used in EMA
+    :param price_column: Column to use when calculating EMA
     """
 
-    if 'close' not in df.columns or 'symbol' not in df.columns:
-        raise ValueError('close or symbol not found in dataframe')
+    if price_column not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('price column or symbol not found in dataframe')
 
-    df[f'ema_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(2)
+    df[f'ema_{window}'] = df[['symbol', price_column]].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(2)
 
 
 def calculate_ema_end(
     df: pd.DataFrame,
     window: int,
     start_row: int,
+    price_column: str = 'close',
 ) -> None:
     """
     Calculate EMA values, assuming there is a starting EMA value already.
@@ -270,10 +273,11 @@ def calculate_ema_end(
     :param df: Target pd.DataFrame
     :param window: Number of closing periods used in EMA
     :param start_row: Designate where the EMA start value is, relative to symbol.
+    :param price_column: Column to use when calculating EMA
     """
 
-    if f'ema_{window}' not in df.columns or 'close' not in df.columns or 'symbol' not in df.columns:
-        raise ValueError('close, symbol or relevant ema column not found in pd.DataFrame')
+    if f'ema_{window}' not in df.columns or price_column not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('price column, symbol or relevant ema column not found in pd.DataFrame')
 
     if len(df) < 2:
         return
@@ -291,10 +295,10 @@ def calculate_ema_end(
 
         if symbol_row > start_row:
             previous_ema = df.loc[row_index - 1, f'ema_{window}']
-            today_close = df.loc[row_index, 'close']
+            today_price = df.loc[row_index, price_column]
 
             df.loc[row_index, f'ema_{window}'] = (
-                today_close * smoothing_coeff + previous_ema * (1 - smoothing_coeff)
+                today_price * smoothing_coeff + previous_ema * (1 - smoothing_coeff)
             )
 
         symbol_row += 1

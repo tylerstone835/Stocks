@@ -321,3 +321,35 @@ def calculate_ema(
 
     calculate_ema_start(df=df, window=window, price_column=price_column)
     calculate_ema_end(df=df, window=window, start_row=window, price_column=price_column)
+
+
+def calculate_macd(
+    df: pd.DataFrame,
+    short_window: int = 12,
+    long_window: int = 26,
+    signal_window: int = 9,
+) -> None:
+    """
+    Calculate macd_histogram column for designated pd.DataFrame.
+
+    :param df: Target pd.DataFrame
+    :param short_window: Number of closing periods used to make the short window.
+    :param long_window: Number of closing periods used to make the long window.
+    :param signal_window: Number of (short_window - long_window) periods to make signal line.
+    """
+
+    if len(df) < long_window + signal_window:
+        raise ValueError('Not enough periods to calculate macd column')
+
+    calculate_ema(df=df, window=short_window)
+    calculate_ema(df=df, window=long_window)
+    df.dropna(subset=[f'ema_{short_window}', f'ema_{long_window}'], inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    df['fast_line'] = df[f'ema_{short_window}'] - df[f'ema_{long_window}']
+
+    calculate_ema(df=df, window=signal_window, price_column='fast_line')
+
+    df['macd_histogram'] = round(df['fast_line'] - df[f'ema_{signal_window}'], 7)
+
+    df.drop(columns=['fast_line', f'ema_{short_window}', f'ema_{long_window}', f'ema_{signal_window}'], inplace=True)

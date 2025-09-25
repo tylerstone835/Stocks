@@ -246,6 +246,7 @@ def calculate_ema_start(
     df: pd.DataFrame,
     window: int,
     price_column: str = 'close',
+    precision: int = 2,
 ) -> None:
     """
     Creates column label and calculates the starting value for an EMA window.
@@ -253,12 +254,13 @@ def calculate_ema_start(
     :param df: Target pd.DataFrame
     :param window: Number of closing periods used in EMA
     :param price_column: Column to use when calculating EMA
+    :param precision: Floating point precision of EMA output
     """
 
     if price_column not in df.columns or 'symbol' not in df.columns:
         raise ValueError('price column or symbol not found in dataframe')
 
-    df[f'ema_{window}'] = df[['symbol', price_column]].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(2)
+    df[f'ema_{window}'] = df[['symbol', price_column]].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(precision)
 
 
 def calculate_ema_end(
@@ -266,6 +268,7 @@ def calculate_ema_end(
     window: int,
     start_row: int,
     price_column: str = 'close',
+    precision: int = 2,
 ) -> None:
     """
     Calculate EMA values, assuming there is a starting EMA value already.
@@ -274,6 +277,7 @@ def calculate_ema_end(
     :param window: Number of closing periods used in EMA
     :param start_row: Designate where the EMA start value is, relative to symbol.
     :param price_column: Column to use when calculating EMA
+    :param precision: Floating point precision of EMA output
     """
 
     if f'ema_{window}' not in df.columns or price_column not in df.columns or 'symbol' not in df.columns:
@@ -303,13 +307,14 @@ def calculate_ema_end(
 
         symbol_row += 1
 
-    df[f'ema_{window}'] = df[f'ema_{window}'].round(2)
+    df[f'ema_{window}'] = df[f'ema_{window}'].round(precision)
 
 
 def calculate_ema(
     df: pd.DataFrame,
     window: int,
     price_column: str = 'close',
+    precision: int = 2,
 ) -> None:
     """
     Calculate entire EMA column for a designated df and window.
@@ -317,10 +322,11 @@ def calculate_ema(
     :param df: Target pd.DataFrame
     :param window: Number of closing periods used in EMA
     :param price_column: Column to use when calculating EMA
+    :param precision: Floating point precision of EMA output
     """
 
-    calculate_ema_start(df=df, window=window, price_column=price_column)
-    calculate_ema_end(df=df, window=window, start_row=window, price_column=price_column)
+    calculate_ema_start(df=df, window=window, price_column=price_column, precision=precision)
+    calculate_ema_end(df=df, window=window, start_row=window, price_column=price_column, precision=precision)
 
 
 def calculate_macd(
@@ -341,14 +347,14 @@ def calculate_macd(
     if len(df) < long_window + signal_window:
         raise ValueError('Not enough periods to calculate macd column')
 
-    calculate_ema(df=df, window=short_window)
-    calculate_ema(df=df, window=long_window)
+    calculate_ema(df=df, window=short_window, precision=10)
+    calculate_ema(df=df, window=long_window, precision=10)
     df.dropna(subset=[f'ema_{short_window}', f'ema_{long_window}'], inplace=True)
     df.reset_index(drop=True, inplace=True)
 
     df['fast_line'] = df[f'ema_{short_window}'] - df[f'ema_{long_window}']
 
-    calculate_ema(df=df, window=signal_window, price_column='fast_line')
+    calculate_ema(df=df, window=signal_window, price_column='fast_line', precision=10)
 
     df['macd_histogram'] = round(df['fast_line'] - df[f'ema_{signal_window}'], 7)
 

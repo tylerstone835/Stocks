@@ -251,3 +251,102 @@ def end_ema_query(
         data.symbol,
         data.date;
     """
+
+
+def update_macd_query(
+    table: str,
+    record_minimum: int = 34,
+    record_offset: int = 110,
+) -> str:
+    """
+    Return symbols with missing MACD values, along with the data
+    required to calculate the missing values.
+
+    :param table: Target table to calculate MACD values for.
+    :param record_minimum: Minimum number of records to calculate MACD.
+    :param record_offset: Max records included to help calculate missing values.
+    :return: Formatted query.
+    """
+
+    return f"""
+    /*
+    Return Stocks that have the minimum number of records
+    required to calculate macd_histogram values.
+    */
+
+    WITH CTE_QUALIFYING_STOCKS
+    AS
+    (
+    SELECT
+        symbol
+    FROM
+        {table}
+    GROUP BY
+        1
+    HAVING
+        COUNT(*) >= {record_minimum}
+    )
+
+
+    /*
+    Return base data necessary to calculate new macd_histogram values.
+    Row number, relative to the stock symbol, is added to perform an
+    offset later in the query.
+    */
+    ,CTE_BASE_DATA
+    AS
+    (
+    SELECT
+        date,
+        symbol,
+        close,
+        macd_histogram,
+        ROW_NUMBER() OVER (PARTITION BY symbol) AS 'row'
+    FROM
+        {table}
+    WHERE
+        symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
+    ORDER BY
+        2,1
+    )
+
+
+    /*
+    Identifies the first blank MACD row AFTER the minimum records required to
+    calculate. This first row number is then offset, providing the starting row
+    for each ticker symbol, guaranteeing enough base data to calculate all missing
+    MACD rows for each symbol.
+    */
+    ,CTE_OFFSET_INDEX
+    AS
+    (
+    SELECT
+        symbol,
+        MIN(row) - {record_offset} AS 'start_row'
+    FROM
+        CTE_BASE_DATA
+    WHERE
+        row >= {record_minimum}
+        AND macd_histogram IS NULL
+    GROUP BY
+        1
+    )
+
+    /*
+    Return every qualifying stock with missing MACD data, along with
+    enough previous records to calculate the missing values.
+    */
+
+    SELECT
+        base.date,
+        base.symbol,
+        base.close,
+        base.macd_histogram
+    FROM
+        CTE_BASE_DATA base
+    INNER JOIN
+        CTE_OFFSET_INDEX offset
+            ON base.symbol = offset.symbol
+    WHERE
+        base.row >= offset.start_row
+    """

@@ -341,12 +341,12 @@ def update_macd_query(
         base.date,
         base.symbol,
         base.close,
-        base.macd_histogram
+        base.macd_histogram AS 'current_macd'
     FROM
         CTE_BASE_DATA base
     INNER JOIN
         CTE_OFFSET_INDEX offset
             ON base.symbol = offset.symbol
     WHERE
-        base.row >= offset.start_row
+        base.row >= offset.start_row;
     """

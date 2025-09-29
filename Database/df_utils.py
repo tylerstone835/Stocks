@@ -344,12 +344,12 @@ def calculate_macd(
     :param signal_window: Number of (short_window - long_window) periods to make signal line.
     """
 
-    if len(df) < long_window + signal_window:
-        raise ValueError('Not enough periods to calculate macd column')
+    if len(df) < long_window + signal_window - 1:
+        df['macd_histogram'] = None
 
     calculate_ema(df=df, window=short_window, precision=10)
     calculate_ema(df=df, window=long_window, precision=10)
-    df.dropna(subset=[f'ema_{short_window}', f'ema_{long_window}'], inplace=True)
+    df.dropna(subset=[f'ema_{long_window}'], inplace=True)
     df.reset_index(drop=True, inplace=True)
 
     df['fast_line'] = df[f'ema_{short_window}'] - df[f'ema_{long_window}']

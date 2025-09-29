@@ -176,7 +176,7 @@ def update_macd(
     if df.empty:
         return
 
-    calculate_macd(df)
+    calculate_macd(df=df, short_window=short_window, long_window=long_window, signal_window=signal_window)
 
     df = (df[~(df['macd_histogram'].isna()) & (df['current_macd'].isna())]
           .drop(columns=['close', 'current_macd'])

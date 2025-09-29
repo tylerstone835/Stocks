@@ -3,9 +3,9 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_ema_start, calculate_ema_end
+from df_utils import calculate_ema_start, calculate_ema_end, calculate_macd
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
-from queries import update_sma_query, start_ema_query, end_ema_query
+from queries import update_sma_query, start_ema_query, end_ema_query, update_macd_query
 
 
 def update_daily_price_action() -> None:
@@ -141,3 +141,49 @@ def update_ema(
     conn.close()
 
     print(f'{table} EMA_{window}s updated...')
+
+
+def update_macd(
+    table: str,
+    short_window: int = 12,
+    long_window: int = 26,
+    signal_window: int = 9,
+    record_offset: int = 110,
+) -> None:
+    """
+    Finds symbols in DB with enough data to calculate macd if they are NULL.
+    Insert calculated MACD values into target SQL table.
+
+    :param table: Target table to update MACD values for.
+    :param short_window: Size of short window in MACD calculation.
+    :param long_window: Size of long window in MACD calculation.
+    :param signal_window: Size of signal window in MACD calculation.
+    :param record_offset: Max number of records included in EMA calculation.
+    """
+
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
+
+    df = pd.read_sql_query(
+        con=con,
+        sql=update_macd_query(
+            table=table,
+            record_minimum=long_window + signal_window - 1,
+            record_offset=record_offset
+            )
+    )
+
+    if df.empty:
+        return
+
+    calculate_macd(df)
+
+    df = (df[~(df['macd_histogram'].isna()) & (df['current_macd'].isna())]
+          .drop(columns=['close', 'current_macd'])
+          .filter(items=['macd_histogram', 'symbol', 'date']))
+
+    cursor.executemany(f'UPDATE {table} SET macd_histogram = ? WHERE symbol = ? AND date = ?', df.values)
+    con.commit()
+    con.close()
+
+    print(f'{table} macd_histograms updated...')

@@ -3,9 +3,9 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_ema_start, calculate_ema_end, calculate_macd
+from df_utils import calculate_macd, calculate_ema
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
-from queries import update_sma_query, start_ema_query, end_ema_query, update_macd_query
+from queries import update_sma_query, update_macd_query, update_ema_query
 
 
 def update_daily_price_action() -> None:
@@ -106,41 +106,37 @@ def update_sma(
 def update_ema(
     window: int,
     table: str,
+    record_offset: int = 200,
 ):
     """
-    Finds symbols in DB with enough data to calculate ema if they are NULL.
-    Insert calculated EMA values into target SQL table.
+    Updates symbols with enough data to calculate missing ema values.
 
     :param window: Target EMA column.
     :param table: Target table to update EMA values for.
+    :param record_offset: Max number of records included in EMA calculation.
     """
 
-    conn = sqlite3.connect(DB_FILEPATH)
-    cursor = conn.cursor()
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
 
-    start_df = pd.read_sql_query(sql=start_ema_query(window, table), con=conn)
+    df = pd.read_sql_query(con=con, sql=update_ema_query(table=table, window=window, record_offset=record_offset))
 
-    if not start_df.empty:
+    if df.empty:
+        return
 
-        calculate_ema_start(df=start_df, window=window)
-        start_df = start_df.dropna(subset=[f'ema_{window}']).filter(items=[f'ema_{window}', 'symbol', 'date'])
+    calculate_ema(df=df, window=window)
 
-        cursor.executemany(f'UPDATE {table} SET ema_{window} = ? WHERE symbol = ? AND date = ?', start_df.values)
-        conn.commit()
+    df = (
+        df[~(df[f'ema_{window}'].isna()) & (df['current_ema'].isna())]
+        .drop(columns=['close', 'current_ema'])
+        .filter(items=[f'ema_{window}', 'symbol', 'date'])
+    )
 
-    end_df = pd.read_sql_query(sql=end_ema_query(window, table), con=conn)
+    cursor.executemany(f'UPDATE {table} SET ema_{window} = ? WHERE symbol = ? AND date = ?', df.values)
+    con.commit()
+    con.close()
 
-    if not end_df.empty:
-
-        calculate_ema_end(df=end_df, window=window, start_row=1)
-        end_df = end_df.filter(items=[f'ema_{window}', 'symbol', 'date'])
-
-        cursor.executemany(f'UPDATE {table} SET ema_{window} = ? WHERE symbol = ? AND date = ?', end_df.values)
-        conn.commit()
-
-    conn.close()
-
-    print(f'{table} EMA_{window}s updated...')
+    print(f'{table} ema_{window}s updated...')
 
 
 def update_macd(
@@ -148,7 +144,7 @@ def update_macd(
     short_window: int = 12,
     long_window: int = 26,
     signal_window: int = 9,
-    record_offset: int = 110,
+    record_offset: int = 200,
 ) -> None:
     """
     Finds symbols in DB with enough data to calculate macd if they are NULL.

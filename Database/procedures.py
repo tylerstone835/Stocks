@@ -5,7 +5,7 @@ import pandas as pd
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
 from df_utils import calculate_macd, calculate_ema
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
-from queries import update_sma_query, update_macd_query, update_ema_query
+from queries import *
 
 
 def update_daily_price_action() -> None:
@@ -85,6 +85,9 @@ def update_sma(
     :param table: Target table to update SMA values for.
     """
 
+    if table == 'weekly':
+        clear_latest_value(table='weekly', column=f'sma_{window}')
+
     conn = sqlite3.connect(DB_FILEPATH)
 
     df = pd.read_sql_query(sql=update_sma_query(window, table), con=conn)
@@ -115,6 +118,9 @@ def update_ema(
     :param table: Target table to update EMA values for.
     :param record_offset: Max number of records included in EMA calculation.
     """
+
+    if table == 'weekly':
+        clear_latest_value(table='weekly', column=f'ema_{window}')
 
     con = sqlite3.connect(DB_FILEPATH)
     cursor = con.cursor()
@@ -157,6 +163,9 @@ def update_macd(
     :param record_offset: Max number of records included in EMA calculation.
     """
 
+    if table == 'weekly':
+        clear_latest_value(table='weekly', column='macd_histogram')
+
     con = sqlite3.connect(DB_FILEPATH)
     cursor = con.cursor()
 
@@ -183,3 +192,32 @@ def update_macd(
     con.close()
 
     print(f'{table} macd_histograms updated...')
+
+
+def clear_latest_value(
+    table: str,
+    column: str,
+) -> None:
+    """
+    Sets the latest designated column that is not null, to null.
+    Useful for clearing out latest Weekly value, for when it needs
+    to be recalculated as the week progresses.
+
+    :param table: Target table.
+    :param column: Target column.
+    """
+
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
+
+    df = pd.read_sql_query(con=con, sql=clear_latest_value_query(table, column))
+
+    if df.empty:
+        return
+
+    df[column] = None
+    df = df.filter(items=[column, 'symbol', 'date'])
+
+    cursor.executemany(f'UPDATE {table} SET {column} = ? WHERE symbol = ? AND date = ?', df.values)
+    con.commit()
+    con.close()

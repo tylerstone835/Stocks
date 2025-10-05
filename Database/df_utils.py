@@ -242,91 +242,28 @@ def calculate_atr(
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)
 
 
-def calculate_ema_start(
-    df: pd.DataFrame,
-    window: int,
-    price_column: str = 'close',
-    precision: int = 2,
-) -> None:
-    """
-    Creates column label and calculates the starting value for an EMA window.
-
-    :param df: Target pd.DataFrame
-    :param window: Number of closing periods used in EMA
-    :param price_column: Column to use when calculating EMA
-    :param precision: Floating point precision of EMA output
-    """
-
-    if price_column not in df.columns or 'symbol' not in df.columns:
-        raise ValueError('price column or symbol not found in dataframe')
-
-    df[f'ema_{window}'] = df[['symbol', price_column]].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(precision)
-
-
-def calculate_ema_end(
-    df: pd.DataFrame,
-    window: int,
-    start_row: int,
-    price_column: str = 'close',
-    precision: int = 2,
-) -> None:
-    """
-    Calculate EMA values, assuming there is a starting EMA value already.
-
-    :param df: Target pd.DataFrame
-    :param window: Number of closing periods used in EMA
-    :param start_row: Designate where the EMA start value is, relative to symbol.
-    :param price_column: Column to use when calculating EMA
-    :param precision: Floating point precision of EMA output
-    """
-
-    if f'ema_{window}' not in df.columns or price_column not in df.columns or 'symbol' not in df.columns:
-        raise ValueError('price column, symbol or relevant ema column not found in pd.DataFrame')
-
-    if len(df) < 2:
-        return
-
-    smoothing_coeff = 2/(window + 1)
-
-    symbol = df['symbol'][0]
-    symbol_row = 1
-
-    for row_index in range(len(df)):
-
-        if df['symbol'][row_index] != symbol:
-            symbol_row = 1
-            symbol = df['symbol'][row_index]
-
-        if symbol_row > start_row:
-            previous_ema = df.loc[row_index - 1, f'ema_{window}']
-            today_price = df.loc[row_index, price_column]
-
-            df.loc[row_index, f'ema_{window}'] = (
-                today_price * smoothing_coeff + previous_ema * (1 - smoothing_coeff)
-            )
-
-        symbol_row += 1
-
-    df[f'ema_{window}'] = df[f'ema_{window}'].round(precision)
-
-
 def calculate_ema(
     df: pd.DataFrame,
     window: int,
-    price_column: str = 'close',
-    precision: int = 2,
 ) -> None:
     """
-    Calculate entire EMA column for a designated df and window.
+    Calculate ema column for designated pd.DataFrame.
 
     :param df: Target pd.DataFrame
-    :param window: Number of closing periods used in EMA
-    :param price_column: Column to use when calculating EMA
-    :param precision: Floating point precision of EMA output
+    :param short_window: Number of closing periods used in EMA calculation.
     """
 
-    calculate_ema_start(df=df, window=window, price_column=price_column, precision=precision)
-    calculate_ema_end(df=df, window=window, start_row=window, price_column=price_column, precision=precision)
+    if 'close' not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('close or symbol not found in target pd.DataFrame')
+
+    df[f'ema_{window}'] = (
+        df[['symbol', 'close']]
+        .groupby(by='symbol')
+        .ewm(span=window, adjust=False, min_periods=window)
+        .mean()
+        .reset_index(drop=True)
+        .round(2)
+    )
 
 
 def calculate_macd(
@@ -343,6 +280,9 @@ def calculate_macd(
     :param long_window: Number of closing periods used to make the long window.
     :param signal_window: Number of (short_window - long_window) periods to make signal line.
     """
+
+    if 'close' not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('close or symbol not found in target pd.DataFrame')
 
     df[f'ema_{short_window}'] = (
         df[['symbol', 'close']]

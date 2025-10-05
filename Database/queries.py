@@ -286,3 +286,29 @@ def update_macd_query(
     WHERE
         base.row >= offset.start_row;
     """
+
+
+def clear_latest_value_query(
+    table: str,
+    column: str,
+) -> str:
+    """
+    Return the max date where designated column is not null.
+
+    :param table: Target table to clear max value from.
+    :param column: Target column to clear max value from.
+
+    :return: Formatted query.
+    """
+
+    return f"""
+    SELECT
+        MAX(date) AS 'date',
+        symbol
+    FROM
+        {table}
+    WHERE
+        {column} IS NOT NULL
+    GROUP BY
+        symbol
+    """

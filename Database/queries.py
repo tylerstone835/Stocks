@@ -91,89 +91,24 @@ def update_sma_query(
     """
 
 
-def start_ema_query(
-    window: int,
+def update_ema_query(
     table: str,
+    window: int,
+    record_offset: int = 200,
 ) -> str:
     """
-    Return the symbols that need their ema started (EMA's begin with an SMA
-    before the rest can be calculated exponentially).
+    Return symbols with missing EMA values, along with the data
+    required to calculate the missing values.
 
-    :param window: EMA window.
-    :param table: Target table to calculate EMA values for.
+    :param table: Target table to calculate MACD values for.
+    :param window: EMA window that needs to be updated.
+    :param record_offset: Max records included to help calculate missing values.
     :return: Formatted query.
     """
-
     return f"""
     /*
-    Label Stock Data with row_numbers for future reference
-    */
-    WITH CTE_STOCK_DATA
-    AS
-    (
-    SELECT
-        date,
-        symbol,
-        close,
-        ema_{window},
-        row_number() OVER (PARTITION BY symbol) AS 'row'
-    FROM
-        {table}
-    ORDER BY
-        symbol,
-        date
-    )
-
-    /*
-    Find stocks that have an empty beginning value for the EMA window.
-    */
-    ,CTE_QUALIFYING_STOCKS
-    AS
-    (
-    SELECT
-        symbol
-    FROM
-        CTE_STOCK_DATA
-    WHERE
-        row = {window}
-        AND ema_{window} IS NULL
-    )
-
-    /*
-    Return the number of records necessary to calculate the beginning of the EMA
-    */
-    SELECT
-        date,
-        symbol,
-        close
-    FROM
-        CTE_STOCK_DATA
-    WHERE
-        symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
-        AND row <= {window}
-    ORDER BY
-        symbol,
-        date
-    """
-
-
-def end_ema_query(
-    window: int,
-    table: str,
-) -> str:
-    """
-    Return the symbols that have their ema started, but have
-    NULL values that need to be calculated.
-
-    :param window: EMA window.
-    :param table: Target table to calculate EMA values for.
-    :return: Formatted query.
-    """
-
-    return f"""
-    /*
-    Return Stocks that have the minimum number of records required
-    to calculate the end of desired EMA window.
+    Return Stocks that have the minimum number of records
+    required to calculate ema values.
     */
 
     WITH CTE_QUALIFYING_STOCKS
@@ -184,17 +119,18 @@ def end_ema_query(
     FROM
         {table}
     GROUP BY
-        symbol
+        1
     HAVING
-        COUNT(*) > {window}
+        COUNT(*) >= {window}
     )
 
+
     /*
-    Return base data necessary to calculate desired EMA/update records.
+    Return base data necessary to calculate new ema values.
     Row number, relative to the stock symbol, is added to perform an
     offset later in the query.
     */
-    , CTE_RANKED_DATA
+    ,CTE_BASE_DATA
     AS
     (
     SELECT
@@ -208,48 +144,48 @@ def end_ema_query(
     WHERE
         symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
     ORDER BY
-        symbol,
-        date
+        2,1
     )
+
+
     /*
-    Identifies the first blank EMA row AFTER the minimum records required to
-    calculate. This first row number is then offset by one, guaranteeing
-    enough base data to calculate all missing EMA rows for each symbol.
+    Identifies the first blank ema row AFTER the minimum records required to
+    calculate. This first row number is then offset, providing the starting row
+    for each ticker symbol, guaranteeing enough base data to calculate all missing
+    ema rows for each symbol.
     */
-    ,CTE_ROW_REFERENCE
+    ,CTE_OFFSET_INDEX
     AS
     (
     SELECT
         symbol,
-        MIN(row) - 1 AS 'starting_row'
+        MIN(row) - {record_offset} AS 'start_row'
     FROM
-        CTE_RANKED_DATA
+        CTE_BASE_DATA
     WHERE
-        row > {window}
+        row >= {window}
         AND ema_{window} IS NULL
     GROUP BY
-        symbol
+        1
     )
 
     /*
-    Return every qualifying stock with missing SMA data, along with enough previous records
-    to calculate the missing values.
+    Return every qualifying stock with missing MACD data, along with
+    enough previous records to calculate the missing values.
     */
+
     SELECT
-        data.date,
-        data.symbol,
-        data.close,
-        data.ema_{window}
+        base.date,
+        base.symbol,
+        base.close,
+        base.ema_{window} AS 'current_ema'
     FROM
-        CTE_RANKED_DATA data
+        CTE_BASE_DATA base
     INNER JOIN
-        CTE_ROW_REFERENCE row_ref
-            ON data.symbol = row_ref.symbol
+        CTE_OFFSET_INDEX offset
+            ON base.symbol = offset.symbol
     WHERE
-       data.row >= row_ref.starting_row
-    ORDER BY
-        data.symbol,
-        data.date;
+        base.row >= offset.start_row;
     """
 
 

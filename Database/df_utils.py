@@ -344,18 +344,32 @@ def calculate_macd(
     :param signal_window: Number of (short_window - long_window) periods to make signal line.
     """
 
-    if len(df) < long_window + signal_window - 1:
-        df['macd_histogram'] = None
+    df[f'ema_{short_window}'] = (
+        df[['symbol', 'close']]
+        .groupby(by='symbol')
+        .ewm(span=short_window, adjust=False, min_periods=short_window)
+        .mean()
+        .reset_index(drop=True)
+    )
 
-    calculate_ema(df=df, window=short_window, precision=10)
-    calculate_ema(df=df, window=long_window, precision=10)
-    df.dropna(subset=[f'ema_{long_window}'], inplace=True)
-    df.reset_index(drop=True, inplace=True)
+    df[f'ema_{long_window}'] = (
+        df[['symbol', 'close']]
+        .groupby(by='symbol')
+        .ewm(span=long_window, adjust=False, min_periods=long_window)
+        .mean()
+        .reset_index(drop=True)
+    )
 
     df['fast_line'] = df[f'ema_{short_window}'] - df[f'ema_{long_window}']
 
-    calculate_ema(df=df, window=signal_window, price_column='fast_line', precision=10)
+    df['signal_line'] = (
+        df[['symbol', 'fast_line']]
+        .groupby(by='symbol')
+        .ewm(span=signal_window, adjust=False, min_periods=signal_window)
+        .mean()
+        .reset_index(drop=True)
+    )
 
-    df['macd_histogram'] = round(df['fast_line'] - df[f'ema_{signal_window}'], 7)
+    df['macd_histogram'] = round(df['fast_line'] - df['signal_line'], 7)
 
-    df.drop(columns=['fast_line', f'ema_{short_window}', f'ema_{long_window}', f'ema_{signal_window}'], inplace=True)
+    df.drop(columns=['fast_line', 'signal_line', f'ema_{short_window}', f'ema_{long_window}'], inplace=True)

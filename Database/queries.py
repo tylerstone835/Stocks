@@ -386,6 +386,93 @@ def update_keltner_query(
     """
 
 
+def update_atr_query(
+    table: str,
+    window: int = 14,
+) -> str:
+
+    return f"""
+    /*
+    Return Stocks that have the minimum number of records
+    required to calculate atr values.
+    */
+    WITH CTE_QUALIFYING_STOCKS
+    AS
+    (
+    SELECT
+        symbol
+    FROM
+        {table}
+    GROUP BY
+        1
+    HAVING COUNT(*) >= {window}
+    )
+
+    /*
+    Return base data necessary to calculate new atr values.
+    Row number, relative to the stock symbol, is added to perform an
+    offset later in the query.
+    */
+    ,CTE_BASE_DATA
+    AS
+    (
+    SELECT
+        date,
+        symbol,
+        high,
+        low,
+        close,
+        atr,
+        ROW_NUMBER() OVER (PARTITION BY symbol) AS 'row'
+    FROM
+        daily
+    WHERE
+        symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
+    ORDER BY
+        2,1
+    )
+
+    /*
+    Identifies the first blank atr row AFTER the minimum records required to
+    calculate. This first row number is then offset, providing the starting row
+    for each ticker symbol, guaranteeing enough base data to calculate all missing
+    atr rows for each symbol.
+    */
+    ,CTE_OFFSET_INDEX
+    AS
+    (
+    SELECT
+        symbol,
+        MIN(row) - {window + 1} AS 'start_row'
+    FROM
+        CTE_BASE_DATA
+    WHERE
+        row >= {window}
+        AND atr IS NULL
+    GROUP BY
+        1
+    )
+
+    /*
+    Return every qualifying stock with missing atr data, along with
+    enough previous records to calculate the missing values.
+    */
+    SELECT
+        base.date,
+        base.symbol,
+        base.high,
+        base.low,
+        base.close,
+        base.atr AS 'current_atr'
+    FROM
+        CTE_BASE_DATA base
+    INNER JOIN
+        CTE_OFFSET_INDEX off
+            ON base.symbol = off.symbol
+    WHERE
+            base.row >= off.start_row
+    """
+
 def clear_latest_value_query(
     table: str,
     column: str,

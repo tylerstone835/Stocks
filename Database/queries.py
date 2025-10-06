@@ -288,6 +288,104 @@ def update_macd_query(
     """
 
 
+def update_keltner_query(
+    table: str,
+    ema_spine_window: int = 20,
+    channel_window: int = 125,
+) -> str:
+    """
+    Return symbols with missing Keltner values, along with the data
+    required to calculate the missing values.
+
+    :param table: Target table to calculate Keltner values for.
+    :param ema_spine_window: ema column used to calculate deviation values.
+    :param channel_window: Number of periods included in 95th deviation percentile.
+    :return: Formatted query.
+    """
+
+    return f"""
+    /*
+    Return Stocks that have the minimum number of records
+    required to calculate Keltner values.
+    */
+    WITH CTE_QUALIFYING_STOCKS
+    AS
+    (
+    SELECT
+        symbol
+    FROM
+        {table}
+    GROUP BY
+        1
+    HAVING COUNT(*) >= {ema_spine_window + channel_window - 1}
+    )
+
+    /*
+    Return base data necessary to calculate new Keltner values.
+    Row number, relative to the stock symbol, is added to perform an
+    offset later in the query.
+    */
+    ,CTE_BASE_DATA
+    AS
+    (
+    SELECT
+        date,
+        symbol,
+        high,
+        low,
+        ema_{ema_spine_window},
+        deviation,
+        ROW_NUMBER() OVER (PARTITION BY symbol) AS 'row'
+    FROM
+        {table}
+    WHERE
+        symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
+    ORDER BY
+        2,1
+    )
+
+    /*
+    Identifies the first blank deviation row AFTER the minimum records required to
+    calculate. This first row number is then offset, providing the starting row
+    for each ticker symbol, guaranteeing enough base data to calculate all missing
+    deviation/keltner channel rows for each symbol.
+    */
+    ,CTE_OFFSET_INDEX
+    AS
+    (
+    SELECT
+        symbol,
+        MIN(row) - {channel_window - 1} AS 'start_row'
+    FROM
+        CTE_BASE_DATA
+    WHERE
+        row >= {ema_spine_window + channel_window - 1}
+        AND deviation IS NULL
+    GROUP BY
+        1
+    )
+
+    /*
+    Return every qualifying stock with missing Keltner data, along with
+    enough previous records to calculate the missing values.
+    */
+    SELECT
+        base.date,
+        base.symbol,
+        base.low,
+        base.high,
+        base.ema_{ema_spine_window},
+        base.deviation AS 'current_deviation'
+    FROM
+        CTE_BASE_DATA base
+    INNER JOIN
+        CTE_OFFSET_INDEX off
+            ON base.symbol = off.symbol
+    WHERE
+        base.row >= off.start_row
+    """
+
+
 def clear_latest_value_query(
     table: str,
     column: str,

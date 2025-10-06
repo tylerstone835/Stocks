@@ -118,6 +118,9 @@ def calculate_variance(
     :param spine: Series label of the ema you wish to find a variance of. (Typically 20-period)
     """
 
+    if spine not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
+        raise ValueError('Necessary data for calculation not found...')
+
     df['high_difference'] = abs(df['high'] - df[spine])
     df['low_difference'] = abs(df['low'] - df[spine])
 
@@ -165,12 +168,15 @@ def calculate_keltner_channels(
         raise ValueError('Base data needed for calculation not found. Please run get_price_action and/or get_ema '
                          'before running get_keltner_channels')
 
-    if len(df) < window:
-        df[['deviation', 'upper_channel', 'lower_channel']] = None
-        return
-
     calculate_variance(df, spine)
-    df['deviation'] = df['variance'].rolling(window).agg(percentile)
+
+    df['deviation'] = (
+        df[['symbol', 'variance']]
+        .groupby('symbol')
+        .rolling(window)
+        .agg(percentile)
+        .reset_index(drop=True)
+    )
 
     df['upper_channel'] = round(df[spine] * (df['deviation'] + 1), 2)
     df['lower_channel'] = round(df[spine] * (1 - df['deviation']), 2)

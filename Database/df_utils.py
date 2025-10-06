@@ -238,12 +238,20 @@ def calculate_atr(
         df['atr'] = None
         return
 
-    df['yest_close'] = df['close'].shift(1)
+    df['yest_close'] = df[['symbol', 'close']].groupby('symbol').shift(1).reset_index(drop=True)
     df['high_low_diff'] = df['high'] - df['low']
     df['high_close_diff'] = abs(df['yest_close'] - df['high'])
     df['low_close_diff'] = abs(df['yest_close'] - df['low'])
     df['pre_atr'] = df[['high_low_diff', 'high_close_diff', 'low_close_diff']].max(axis=1)
-    df['atr'] = df['pre_atr'].rolling(window).mean().round(3)
+
+    df['atr'] = (
+        df[['symbol', 'pre_atr']]
+        .groupby('symbol')
+        .rolling(window)
+        .mean()
+        .reset_index(drop=True)
+        .round(3)
+    )
 
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)
 

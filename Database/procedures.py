@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_macd, calculate_ema
+from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
 from queries import *
 
@@ -192,6 +192,66 @@ def update_macd(
     con.close()
 
     print(f'{table} macd_histograms updated...')
+
+
+def update_keltner(
+    table: str,
+    ema_spine_window: int = 20,
+    channel_window: int = 125,
+) -> None:
+    """
+    Finds symbols in DB with enough data to calculate keltner if they are NULL.
+    Insert calculated keltner values into target SQL table.
+
+    :param table: Target table to update keltner values for.
+    :param ema_spine_window: ema indicator to base deviation calculations on.
+    :param channel_window: Number of periods included in 95th deviation percentile.
+    """
+
+    if table == 'weekly':
+        clear_latest_value(table='weekly', column='deviation')
+        clear_latest_value(table='weekly', column='upper_channel')
+        clear_latest_value(table='weekly', column='lower_channel')
+
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
+
+    df = pd.read_sql_query(
+        con=con,
+        sql=update_keltner_query(
+            table=table,
+            ema_spine_window=ema_spine_window,
+            channel_window=channel_window
+            )
+    )
+
+    if df.empty:
+        return
+
+    calculate_keltner_channels(df=df, spine=f'ema_{ema_spine_window}', window=channel_window)
+
+    df = (df[~(df['deviation'].isna()) & (df['current_deviation'].isna())]
+          .drop(columns=['low', 'high', f'ema_{ema_spine_window}', 'current_deviation']))
+
+    cursor.executemany(
+        f'UPDATE {table} SET deviation = ? WHERE symbol = ? AND date = ?',
+        df[['deviation', 'symbol', 'date']].values
+    )
+
+    cursor.executemany(
+        f'UPDATE {table} SET upper_channel = ? WHERE symbol = ? AND date = ?',
+        df[['upper_channel', 'symbol', 'date']].values
+    )
+
+    cursor.executemany(
+        f'UPDATE {table} SET lower_channel = ? WHERE symbol = ? AND date = ?',
+        df[['lower_channel', 'symbol', 'date']].values
+    )
+
+    con.commit()
+    con.close()
+
+    print(f'{table} keltner values updated...')
 
 
 def clear_latest_value(

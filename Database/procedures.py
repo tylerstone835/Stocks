@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels, calculate_atr, calculate_impulse
+from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels, calculate_atr, calculate_impulse, calculate_sma
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
 from queries import *
 
@@ -95,7 +95,7 @@ def update_sma(
     if df.empty:
         return
 
-    df[f'sma_{window}'] = df[['symbol', 'close']].groupby('symbol').rolling(window).mean().reset_index(drop=True).round(2)
+    calculate_sma(df=df, window=window)
     df = df.dropna(subset=[f'sma_{window}']).filter(items=[f'sma_{window}', 'symbol', 'date'])
 
     cursor = conn.cursor()

@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels
+from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels, calculate_atr
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
 from queries import *
 
@@ -252,6 +252,37 @@ def update_keltner(
     con.close()
 
     print(f'{table} keltner values updated...')
+
+
+def update_atr(
+    table: str,
+    window: int = 14,
+) -> None:
+    """
+    Finds symbols in DB with enough data to calculate atr if they are NULL.
+    Insert calculated atr values into target SQL table.
+
+    :param table: Target table to update atr values for.
+    :param window: Number of periods to include in atr calculation.
+    """
+
+    if table == 'weekly':
+        clear_latest_value(table='weekly', column='atr')
+
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
+
+    df = pd.read_sql_query(con=con, sql=update_atr_query(table=table, window=window))
+    calculate_atr(df=df)
+
+    df = (df[(df['current_atr'].isna()) & ~(df['atr'].isna())]
+          .filter(items=['atr', 'symbol', 'date']))
+
+    cursor.executemany(f'UPDATE {table} SET atr = ? WHERE symbol = ? AND date = ?', df.values)
+    con.commit()
+    con.close()
+
+    print(f'{table} ATRs updated...')
 
 
 def clear_latest_value(

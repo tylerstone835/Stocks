@@ -433,7 +433,7 @@ def update_atr_query(
         atr,
         ROW_NUMBER() OVER (PARTITION BY symbol) AS 'row'
     FROM
-        daily
+        {table}
     WHERE
         symbol IN (SELECT * FROM CTE_QUALIFYING_STOCKS)
     ORDER BY

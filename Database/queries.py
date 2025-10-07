@@ -390,6 +390,14 @@ def update_atr_query(
     table: str,
     window: int = 14,
 ) -> str:
+    """
+    Return symbols with missing atr values, along with the data
+    required to calculate the missing values.
+
+    :param table: Target table to calculate atr values for.
+    :param window: Number of periods used in ATR calculation.
+    :return: Formatted query.
+    """
 
     return f"""
     /*

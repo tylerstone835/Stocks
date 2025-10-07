@@ -273,6 +273,10 @@ def update_atr(
     cursor = con.cursor()
 
     df = pd.read_sql_query(con=con, sql=update_atr_query(table=table, window=window))
+
+    if df.empty:
+        return
+
     calculate_atr(df=df, window=window)
 
     df = (df[(df['current_atr'].isna()) & ~(df['atr'].isna())]
@@ -304,6 +308,10 @@ def update_impulse(
     cursor = con.cursor()
 
     df = pd.read_sql_query(con=con, sql=update_impulse_query(table=table, spine=spine))
+
+    if df.empty:
+        return
+
     calculate_impulse(df=df, spine=spine)
 
     df = df[(df['current_impulse'].isna()) & ~(df['impulse'].isna())].filter(items=['impulse', 'symbol', 'date'])

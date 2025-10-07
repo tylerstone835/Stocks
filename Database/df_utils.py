@@ -202,12 +202,8 @@ def calculate_impulse(
         df['impulse'] = 'Red'
         return
 
-    if len(df) < 2:
-        df['impulse'] = 'Red'
-        return
-
-    df['ema_impulse'] = df[spine].rolling(2).max()
-    df['macd_impulse'] = df['macd_histogram'].rolling(2).max()
+    df['ema_impulse'] = df[['symbol', spine]].groupby('symbol').rolling(2).max().reset_index(drop=True)
+    df['macd_impulse'] = df[['symbol', 'macd_histogram']].groupby('symbol').rolling(2).max().reset_index(drop=True)
 
     df['macd_rising'] = df['macd_impulse'] == df['macd_histogram']
     df['ema_rising'] = df['ema_impulse'] == df[spine]

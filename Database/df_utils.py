@@ -252,6 +252,30 @@ def calculate_atr(
     df.drop(columns=['yest_close', 'high_low_diff', 'high_close_diff', 'low_close_diff', 'pre_atr'], inplace=True)
 
 
+def calculate_sma(
+    df: pd.DataFrame,
+    window: int = 50,
+) -> None:
+    """
+    Calculate sma column for designated pd.DataFrame.
+
+    :param df: Target pd.DataFrame
+    :param window: Number of closing periods used in SMA calculation.
+    """
+
+    if 'close' not in df.columns or 'symbol' not in df.columns:
+        raise ValueError('close/symbol data not found in target pd.DataFrame')
+
+    df[f'sma_{window}'] = (
+        df[['symbol', 'close']]
+        .groupby('symbol')
+        .rolling(window)
+        .mean()
+        .reset_index(drop=True)
+        .round(2)
+    )
+    
+
 def calculate_ema(
     df: pd.DataFrame,
     window: int,

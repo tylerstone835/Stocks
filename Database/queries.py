@@ -481,6 +481,82 @@ def update_atr_query(
             base.row >= off.start_row
     """
 
+
+def update_impulse_query(
+    table: str,
+    spine: str = 'ema_10',
+) -> str:
+    """
+    Return symbols with missing impulse values, along with the data
+    required to calculate the missing values.
+
+    :param table: Target table to calculate impulse values for.
+    :param spine: Indicator column to use as impulse reference.
+    :return: Formatted query.
+    """
+
+    return f"""
+    /*
+    Return base data necessary to calculate new impulse values.
+    Row number, relative to the stock symbol, is added to perform an
+    offset later in the query.
+    */
+    WITH CTE_BASE_DATA
+    AS
+    (
+    SELECT
+        date,
+        symbol,
+        macd_histogram,
+        {spine},
+        impulse,
+        row_number() OVER (PARTITION BY symbol ORDER BY date) AS 'row'
+    FROM
+        {table}
+    )
+
+    /*
+    Identifies the first blank impulse row AFTER the minimum records required to
+    calculate. This first row number is then offset, providing the starting row
+    for each ticker symbol, guaranteeing enough base data to calculate all missing
+    impulse rows for each symbol.
+    */
+    ,CTE_OFFSET_INDEX
+    AS
+    (
+    SELECT
+        symbol,
+        MIN(row) - 1 AS 'start_row'
+    FROM
+        CTE_BASE_DATA
+    WHERE
+        impulse IS NULL
+    GROUP BY
+        1
+    )
+
+    /*
+    Return every qualifying stock with missing impulse data, along with
+    enough previous records to calculate the missing values.
+    */
+    SELECT
+        base.date,
+        base.symbol,
+        base.macd_histogram,
+        base.{spine},
+        base.impulse AS 'current_impulse'
+    FROM
+        CTE_BASE_DATA base
+    INNER JOIN
+        CTE_OFFSET_INDEX off
+            ON base.symbol = off.symbol
+    WHERE
+        base.row >= off.start_row
+    ORDER BY
+        2,1
+    """
+
+
 def clear_latest_value_query(
     table: str,
     column: str,

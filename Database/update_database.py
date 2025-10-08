@@ -1,8 +1,7 @@
 from procedures import *
-from datetime import datetime
+
 
 def main():
-
     # ___________ update daily table ___________
     update_daily_price_action()
     update_sma(window=50, table='daily')

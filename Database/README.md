@@ -1,4 +1,4 @@
-# Financial Data Pipeline
+# Stock Market Data Pipeline
 
 
 This project is a fully functional Python pipeline that builds and maintains a financial market database using data from the [Polygon.io](https://polygon.io) RESTful API.  

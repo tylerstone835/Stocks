@@ -3,7 +3,8 @@ import sqlite3
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
-from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels, calculate_atr, calculate_impulse, calculate_sma
+from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels
+from df_utils import calculate_atr, calculate_impulse, calculate_sma
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
 from queries import *
 

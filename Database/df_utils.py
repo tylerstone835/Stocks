@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
 import holidays
 import pandas as pd
@@ -284,7 +284,7 @@ def calculate_ema(
     Calculate ema column for designated pd.DataFrame.
 
     :param df: Target pd.DataFrame
-    :param short_window: Number of closing periods used in EMA calculation.
+    :param window: Number of closing periods used in EMA calculation.
     """
 
     if 'close' not in df.columns or 'symbol' not in df.columns:

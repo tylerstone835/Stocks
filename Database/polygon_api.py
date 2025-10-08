@@ -83,7 +83,8 @@ async def gather_price_action(
                            'high',
                            'low',
                            'close',
-                           'volume']))
+                           'volume'])
+            .reset_index(drop=True))
 
 
 async def get_sma(

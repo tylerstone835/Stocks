@@ -10,4 +10,4 @@ The **update_database.py** contains the stored procedures to keep the database r
 # Relational Diagram
 
 All table configurations are stored in **table_maps.py**.
-![Price Action Datbabase | Relationship Model](readme_assets/diagram.png)
+![Price Action Datbabase | Relationship Model](Stocks/Database/readme_assets/diagram.png)

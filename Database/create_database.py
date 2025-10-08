@@ -56,7 +56,7 @@ def main():
         calculate_keltner_channels(weekly_df, window=26)
         calculate_atr(weekly_df)
         calculate_impulse(weekly_df)
-        timestamp_to_date(weekly_df)
+        timestamp_to_date(weekly_df, timespan='week')
 
         insert_data(weekly_df, table_name='weekly')
         logger.info('Weekly batch %s/%s loaded', batch_number, number_of_batches)

@@ -1,10 +1,11 @@
+from datetime import datetime, date, timedelta
 import sqlite3
 
 import pandas as pd
 
-from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH
+from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH, insert_data
 from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels
-from df_utils import calculate_atr, calculate_impulse, calculate_sma
+from df_utils import calculate_atr, calculate_impulse, calculate_sma, calculate_date_table
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
 from queries import *
 
@@ -351,3 +352,27 @@ def clear_latest_value(
     cursor.executemany(f'UPDATE {table} SET {column} = ? WHERE symbol = ? AND date = ?', df.values)
     con.commit()
     con.close()
+
+
+def update_calendar_table() -> None:
+    """
+    Identify if there are any missing days between the date of runtime
+    and the latest date found in the calendar table. If days are missing,
+    insert them into the calendar SQL table.
+    """
+
+    with sqlite3.connect(DB_FILEPATH) as con:
+        cursor = con.cursor()
+        result = cursor.execute("SELECT MAX(date) FROM calendar")
+
+    if not result:
+        raise ValueError('No records found in calendar/date table.')
+
+    latest_db_date = datetime.strptime(result.fetchone()[0], '%Y-%m-%d').date()
+    today = date.today()
+
+    if latest_db_date == today or latest_db_date > today:
+        return
+
+    missing_days_df = calculate_date_table(start=latest_db_date + timedelta(days=1), end=today)
+    insert_data(missing_days_df, table_name='calendar')

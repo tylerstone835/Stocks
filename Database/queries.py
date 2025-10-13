@@ -581,3 +581,28 @@ def clear_latest_value_query(
     GROUP BY
         symbol
     """
+
+
+def get_n_latest_days(
+    number_of_days: int,
+) -> str:
+    """
+    Return the nth latest trading days from the calendar table.
+    Used to find disco'd symbols, so they can be removed from
+    relevant tables.
+
+    :param number_of_days: Latest number of trading days to return
+    """
+
+    return f"""
+    SELECT
+        date
+    FROM
+        calendar
+    WHERE
+        day_of_week NOT IN (6, 5)
+        AND market_holiday IS NULL
+    ORDER BY
+        date DESC
+    LIMIT {number_of_days}
+    """

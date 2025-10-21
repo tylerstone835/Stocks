@@ -583,26 +583,33 @@ def clear_latest_value_query(
     """
 
 
-def get_n_latest_days(
-    number_of_days: int,
+def find_disco_stocks(
+    table: str = 'daily',
+    days_w_out_update: int = 5,
 ) -> str:
     """
-    Return the nth latest trading days from the calendar table.
-    Used to find disco'd symbols, so they can be removed from
-    relevant tables.
+    Return stocks that have got n trading periods without receiving updated price action.
+    Used to identify stocks that have been discontinued and need to be removed from
+    daily, weekly, overview tables.
 
-    :param number_of_days: Latest number of trading days to return
+    :param table: Target table to find Disco'd stocks.
+    :param days_w_out_update: Period threshold.
+    :return: Formatted query.
     """
 
     return f"""
     SELECT
-        date
+        symbol,
+        (
+        CAST(julianday('now', 'localtime') -
+        julianday(MAX(date)) AS INTEGER)
+        ) AS 'days_without_update'
     FROM
-        calendar
-    WHERE
-        day_of_week NOT IN (6, 5)
-        AND market_holiday IS NULL
+        {table}
+    GROUP BY
+        1
+    HAVING
+        days_without_update > {days_w_out_update}
     ORDER BY
-        date DESC
-    LIMIT {number_of_days}
+        2 DESC
     """

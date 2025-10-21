@@ -23,6 +23,14 @@ def main():
     update_atr(table='weekly')
     update_impulse(table='weekly')
 
+    # ___________ database maintenance ___________
+    update_calendar_table()
+    remove_disco_stocks(
+        'daily',
+        'weekly',
+        'symbols'
+    )
+
 
 if __name__ == '__main__':
     main()

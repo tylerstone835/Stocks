@@ -376,3 +376,31 @@ def update_calendar_table() -> None:
 
     missing_days_df = calculate_date_table(start=latest_db_date + timedelta(days=1), end=today)
     insert_data(missing_days_df, table_name='calendar')
+
+
+def remove_disco_stocks(
+    *tables: str,
+) -> None:
+    """
+    Identify stocks that haven't had price action movement in designated number
+    of periods. Provide tables to remove disco'd stocks from.
+
+    :param tables: One or many tables to remove disco'd stocks from.
+    """
+
+    con = sqlite3.connect(DB_FILEPATH)
+    cursor = con.cursor()
+
+    disco_df = pd.read_sql_query(con=con, sql=find_disco_stocks())
+
+    if disco_df.empty:
+        print('No stocks to disco')
+        return
+
+    disco_tuple = tuple([symbol for symbol in disco_df['symbol']])
+
+    for table in tables:
+        cursor.execute(f'DELETE FROM {table} WHERE symbol IN {str(disco_tuple)}')
+    con.commit()
+
+    con.close()

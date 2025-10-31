@@ -25,6 +25,7 @@ def main():
 
     # ___________ database maintenance ___________
     update_calendar_table()
+    insert_new_stocks()
     remove_disco_stocks(
         'daily',
         'weekly',

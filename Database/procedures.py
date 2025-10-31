@@ -1,12 +1,14 @@
+import asyncio
 from datetime import datetime, date, timedelta
 import sqlite3
 
 import pandas as pd
 
 from db_utils import get_missing_days, get_missing_weeks, DB_FILEPATH, insert_data
-from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels
+from df_utils import calculate_macd, calculate_ema, calculate_keltner_channels, timestamp_to_date
 from df_utils import calculate_atr, calculate_impulse, calculate_sma, calculate_date_table
 from polygon_api import get_daily_market_snapshot, get_weekly_market_snapshot
+from polygon_api import gather_price_action, get_active_tickers, gather_overview
 from queries import *
 
 
@@ -404,3 +406,67 @@ def remove_disco_stocks(
     con.commit()
 
     con.close()
+
+
+def insert_new_stocks(
+    batch_size: int = 50
+) -> None:
+    """
+    Subtract current symbols in DB from total active symbols. Gather
+    daily, weekly and overview data for new symbols and insert into DB.
+
+    :param batch_size: Max number of symbols submitted to asynchronous routines.
+    """
+
+    with sqlite3.connect(DB_FILEPATH) as con:
+        current_stock_set = set(
+            pd.read_sql_query(con=con, sql='SELECT symbol FROM symbols')['symbol'].to_list()
+        )
+
+    active_stock_set= set(get_active_tickers())
+    new_stock_list = sorted(active_stock_set - current_stock_set)
+    if not new_stock_list:
+        print('No new symbols to add...')
+        return
+
+    ticker_batches = [new_stock_list[i: i + batch_size] for i in range(0, len(new_stock_list), batch_size)]
+
+    for batch_number, batch in enumerate(ticker_batches, 1):
+        # _____________________________ daily table _____________________________
+        # Gather/Calculate ticker data for batch and insert into daily SQL table.
+        daily_df = asyncio.run(gather_price_action(*batch))
+        calculate_sma(daily_df, 50)
+        calculate_ema(daily_df, 5)
+        calculate_ema(daily_df, 10)
+        calculate_ema(daily_df, 20)
+        calculate_macd(daily_df)
+        calculate_keltner_channels(daily_df)
+        calculate_atr(daily_df)
+        calculate_impulse(daily_df)
+        timestamp_to_date(daily_df)
+
+        insert_data(daily_df, table_name='daily')
+        print(f'{len(batch)} new symbols added to daily...')
+
+        # _____________________________ weekly table _____________________________
+        # Gather/Calculate ticker data for batch and insert into weekly SQL table.
+        weekly_df = asyncio.run(gather_price_action(*batch, timespan='week'))
+
+        calculate_ema(weekly_df, 5)
+        calculate_ema(weekly_df, 10)
+        calculate_ema(weekly_df, 20)
+        calculate_macd(weekly_df)
+        calculate_keltner_channels(weekly_df, window=26)
+        calculate_atr(weekly_df)
+        calculate_impulse(weekly_df)
+        timestamp_to_date(weekly_df, timespan='week')
+
+        insert_data(weekly_df, table_name='weekly')
+        print(f'{len(batch)} new symbols added to weekly...')
+
+        # ________________________ symbols table ________________________
+        # Gather ticker data for batch and insert into overview SQL table.
+        overview_df = asyncio.run(gather_overview(*batch))
+
+        insert_data(overview_df, table_name='symbols')
+        print(f'{len(batch)} new symbols added to symbols...')

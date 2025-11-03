@@ -24,3 +24,25 @@ def price_action_query(
             ORDER BY
                 date
     """
+
+
+def beginning_of_month_query(
+    n_of_months: int = 12,
+):
+    return f"""
+            SELECT
+                year,
+                month,
+                min(date) AS 'BOM'
+            FROM
+                calendar
+            WHERE
+                day_of_week < 5
+                AND NOT is_market_holiday
+                AND date >= date('now', '-365 day')
+            GROUP BY
+                1,2
+            ORDER BY
+                3 DESC
+            LIMIT {n_of_months}
+    """

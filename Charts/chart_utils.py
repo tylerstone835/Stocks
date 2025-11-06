@@ -5,7 +5,7 @@ import pandas as pd
 def plot_macd(
     axes: plt.axes,
     df: pd.DataFrame,
-    xticks: list|pd.Series = []
+    xticks: list|pd.Series = [],
 ) -> None:
     """
     Plot MACD histogram on child axes. This plot needs an aditional day of price action
@@ -17,7 +17,7 @@ def plot_macd(
     :param xticks: Add a custom series of date xticks, else blank.
     """
 
-    if 'macd_histogram' not in df.columns or 'impulse' not in df.columns or 'date' not in df.columns:
+    if not {'macd_histogram', 'impulse', 'date'} <= set(df.columns):
         raise ValueError('Missing necessary data to construct chart')
 
     # MACD bar colors
@@ -48,3 +48,54 @@ def plot_macd(
     axes.set_xbound(lower=0, upper=len(df))
 
     df.drop(columns=['yest_hist', 'color'], inplace=True)
+
+
+def plot_ohlc(
+    axes: plt.axes,
+    df: pd.DataFrame,
+    xticks: list|pd.Series = [],
+) -> None:
+    """
+    Plot OHLC chart on child axes. Requires OHLC data, all EMAs,
+    Keltner Channels and Impulse data.
+
+    :param axes: Child axes on matplotlib.pyplot.figure
+    :param df: Source pd.DataFrame. Requires OHLC.
+    :param xticks: Add a custom series of date xticks, else blank.
+    """
+
+    required_columns_set = {'date', 'open', 'high', 'low', 'close', 'ema_5', 'ema_10', 'ema_20',
+                            'upper_channel', 'lower_channel', 'impulse'}
+
+    if not required_columns_set <= set(df.columns):
+        raise ValueError('Missing necessary data to construct chart')
+
+    df['color'] = df['impulse'].map({'Green': '#004820', 'Blue': '#0000FF', 'Red': '#AC2E2E'})
+
+    # _______________________________________ OHLC Chart _______________________________________
+    axes.plot(df['date'], df['ema_5'], linestyle='-', color='red', linewidth=.2)
+    axes.plot(df['date'], df['ema_10'], linestyle='-', color='black', linewidth=.4)
+    axes.plot(df['date'], df['ema_20'], linestyle='-', color='black', linewidth=.8)
+    axes.plot(df['date'], df['upper_channel'], linestyle='--', color='black', linewidth=.8)
+    axes.plot(df['date'], df['lower_channel'], linestyle='--', color='black', linewidth=.8)
+
+    for i in range(len(df)):
+        date = df['date'][i]
+        high = df['high'][i]
+        low = df['low'][i]
+        open = df['open'][i]
+        close = df['close'][i]
+        color = df['color'][i]
+
+        axes.plot([date, date], [low, high], marker=',', linestyle='-', color=color, linewidth=.75)
+        axes.plot(date, open, marker=0, color=color, markersize=1.5)
+        axes.plot(date, close, marker=1, color=color, markersize=1.5)
+
+    axes.set_xbound(lower=0, upper=len(df))
+    axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
+    axes.set_xticks(xticks)
+    axes.set_xticklabels([])
+    axes.tick_params(axis='x', direction='in', length=0)
+    axes.tick_params(axis='y', direction='out', length=1.5)
+
+    df.drop(columns=['color'], inplace=True)

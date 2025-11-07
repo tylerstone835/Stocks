@@ -289,7 +289,7 @@ async def get_overview(
 
 
 async def gather_overview(
-        *ticker_batch
+        *ticker_batch,
 ) -> pd.DataFrame:
     """
     Using get_overview(), gather overview dataframes asynchronously.
@@ -302,13 +302,21 @@ async def gather_overview(
             *[get_overview(session, ticker) for ticker in ticker_batch]
         )
 
-    return (pd.json_normalize(df_array)
-            .rename(columns={
-        'ticker': 'symbol',
-        'share_class_shares_outstanding': 'outstanding_shares',
-        'branding.logo_url': 'logo_url'}
+    df = (
+        pd.json_normalize(df_array)
+        .rename(
+            columns={
+                'ticker': 'symbol',
+                'share_class_shares_outstanding': 'outstanding_shares',
+                'branding.logo_url': 'logo_url'
+            }
+        )
     )
-            .filter(items=[column for column in overview_map]))
+
+    for column in [column for column in overview_map if column not in df.columns]:
+        df.insert(loc=0, column=column, value=None)
+
+    return df.filter(items=[column for column in overview_map])
 
 
 def get_active_tickers(

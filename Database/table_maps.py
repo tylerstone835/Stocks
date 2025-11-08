@@ -43,6 +43,14 @@ daily_map = {
         'dtype': 'NUMBER(20, 3)',
         'constraint': ''
     },
+    'fast_line': {
+        'dtype': 'NUMBER(20, 7)',
+        'constraint': ''
+    },
+    'signal_line': {
+        'dtype': 'NUMBER(20, 7)',
+        'constraint': ''
+    },
     'macd_histogram': {
         'dtype': 'NUMBER(20, 7)',
         'constraint': ''
@@ -109,6 +117,14 @@ weekly_map = {
     },
     'ema_20': {
         'dtype': 'NUMBER(20, 3)',
+        'constraint': ''
+    },
+    'fast_line': {
+        'dtype': 'NUMBER(20, 7)',
+        'constraint': ''
+    },
+    'signal_line': {
+        'dtype': 'NUMBER(20, 7)',
         'constraint': ''
     },
     'macd_histogram': {

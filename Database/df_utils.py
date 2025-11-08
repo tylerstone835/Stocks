@@ -274,7 +274,7 @@ def calculate_sma(
         .reset_index(drop=True)
         .round(2)
     )
-    
+
 
 def calculate_ema(
     df: pd.DataFrame,
@@ -345,5 +345,6 @@ def calculate_macd(
     )
 
     df['macd_histogram'] = round(df['fast_line'] - df['signal_line'], 7)
+    df[['fast_line', 'signal_line']] = df[['fast_line', 'signal_line']].round(7)
 
-    df.drop(columns=['fast_line', 'signal_line', f'ema_{short_window}', f'ema_{long_window}'], inplace=True)
+    df.drop(columns=[f'ema_{short_window}', f'ema_{long_window}'], inplace=True)

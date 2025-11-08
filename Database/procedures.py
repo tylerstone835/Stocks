@@ -179,7 +179,7 @@ def update_macd(
             table=table,
             record_minimum=long_window + signal_window - 1,
             record_offset=record_offset
-            )
+        )
     )
 
     if df.empty:
@@ -187,11 +187,26 @@ def update_macd(
 
     calculate_macd(df=df, short_window=short_window, long_window=long_window, signal_window=signal_window)
 
-    df = (df[~(df['macd_histogram'].isna()) & (df['current_macd'].isna())]
-          .drop(columns=['close', 'current_macd'])
-          .filter(items=['macd_histogram', 'symbol', 'date']))
+    df = (
+        df[~(df['macd_histogram'].isna()) & (df['current_macd'].isna())]
+        .drop(columns=['close', 'current_macd'])
+    )
 
-    cursor.executemany(f'UPDATE {table} SET macd_histogram = ? WHERE symbol = ? AND date = ?', df.values)
+    cursor.executemany(
+        f'UPDATE {table} SET macd_histogram = ? WHERE symbol = ? AND date = ?',
+        df[['macd_histogram', 'symbol', 'date']].values
+    )
+
+    cursor.executemany(
+        f'UPDATE {table} SET fast_line = ? WHERE symbol = ? AND date = ?',
+        df[['fast_line', 'symbol', 'date']].values
+    )
+
+    cursor.executemany(
+        f'UPDATE {table} SET signal_line = ? WHERE symbol = ? AND date = ?',
+        df[['signal_line', 'symbol', 'date']].values
+    )
+
     con.commit()
     con.close()
 

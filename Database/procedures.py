@@ -168,6 +168,8 @@ def update_macd(
     """
 
     if table == 'weekly':
+        clear_latest_value(table='weekly', column='fast_line')
+        clear_latest_value(table='weekly', column='signal_line')
         clear_latest_value(table='weekly', column='macd_histogram')
 
     con = sqlite3.connect(DB_FILEPATH)

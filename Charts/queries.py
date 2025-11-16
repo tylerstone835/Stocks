@@ -14,6 +14,8 @@ def price_action_query(
                 ema_20,
                 upper_channel,
                 lower_channel,
+                fast_line,
+                signal_line,
                 macd_histogram,
                 impulse
             FROM

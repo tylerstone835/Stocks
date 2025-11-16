@@ -17,7 +17,7 @@ def plot_macd(
     :param xticks: Add a custom series of date xticks, else blank.
     """
 
-    if not {'macd_histogram', 'impulse', 'date'} <= set(df.columns):
+    if not {'macd_histogram', 'fast_line', 'signal_line', 'impulse', 'date'} <= set(df.columns):
         raise ValueError('Missing necessary data to construct chart')
 
     # MACD bar colors
@@ -28,6 +28,7 @@ def plot_macd(
 
     # Create helper columns
     df['yest_hist'] = df['macd_histogram'].shift(1)
+
     df.dropna(subset=['yest_hist'], inplace=True)
     df.reset_index(drop=True, inplace=True)
     df['color'] = ''
@@ -45,7 +46,12 @@ def plot_macd(
     axes.set_yticklabels([])
     axes.tick_params(axis='x', direction='in', length=0)
     axes.tick_params(axis='y', direction='out', length=1.5)
-    axes.set_xbound(lower=0, upper=len(df))
+    axes.set_xbound(lower=-.5, upper=len(df) - .5)
+
+    line_axes = axes.twinx()
+    line_axes.plot(df['date'], df['fast_line'], linestyle='-', color='k', linewidth=.4)
+    line_axes.plot(df['date'], df['signal_line'], linestyle='-', color='k', linewidth=.8)
+    line_axes.set_yticks([])
 
     df.drop(columns=['yest_hist', 'color'], inplace=True)
 
@@ -91,7 +97,7 @@ def plot_ohlc(
         axes.plot(date, open, marker=0, color=color, markersize=1.5)
         axes.plot(date, close, marker=1, color=color, markersize=1.5)
 
-    axes.set_xbound(lower=0, upper=len(df))
+    axes.set_xbound(lower=-.5, upper=len(df) - .5)
     axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
     axes.set_xticks(xticks)
     axes.set_xticklabels([])

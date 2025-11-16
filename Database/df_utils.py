@@ -202,11 +202,11 @@ def calculate_impulse(
         df['impulse'] = 'Red'
         return
 
-    df['ema_impulse'] = df[['symbol', spine]].groupby('symbol').rolling(2).max().reset_index(drop=True)
-    df['macd_impulse'] = df[['symbol', 'macd_histogram']].groupby('symbol').rolling(2).max().reset_index(drop=True)
+    df['ema_impulse'] = df[['symbol', spine]].groupby('symbol').rolling(2).min().reset_index(drop=True)
+    df['macd_impulse'] = df[['symbol', 'macd_histogram']].groupby('symbol').rolling(2).min().reset_index(drop=True)
 
-    df['macd_rising'] = df['macd_impulse'] == df['macd_histogram']
-    df['ema_rising'] = df['ema_impulse'] == df[spine]
+    df['macd_rising'] = df['macd_impulse'] < df['macd_histogram']
+    df['ema_rising'] = df['ema_impulse'] < df[spine]
 
     df['impulse'] = df[['macd_rising', 'ema_rising']].sum(axis=1)
     df['impulse'] = df['impulse'].map({0: 'Red', 1: 'Blue', 2: 'Green'})

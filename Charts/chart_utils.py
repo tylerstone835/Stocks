@@ -113,7 +113,7 @@ def plot_volume(
     xticks: list|pd.Series = [],
 ) -> None:
     """
-    Plot bar chart on child axes. Requires volume data.
+    Plot bar chart of volume data on child axes. Requires volume data.
 
     :param axes: Child axes on matplotlib.pyplot.figure
     :param df: Source pd.DataFrame. Requires Volume.

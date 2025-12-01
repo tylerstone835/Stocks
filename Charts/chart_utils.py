@@ -105,3 +105,35 @@ def plot_ohlc(
     axes.tick_params(axis='y', direction='out', length=1.5)
 
     df.drop(columns=['color'], inplace=True)
+
+
+def plot_volume(
+    axes: plt.axes,
+    df: pd.DataFrame,
+    xticks: list|pd.Series = [],
+) -> None:
+    """
+    Plot bar chart on child axes. Requires volume data.
+
+    :param axes: Child axes on matplotlib.pyplot.figure
+    :param df: Source pd.DataFrame. Requires Volume.
+    :param xticks: Add a custom series of date xticks, else blank.
+    """
+
+    if not {'date', 'volume'} <= set(df.columns):
+        raise ValueError('Missing necessary data to construct chart')
+
+    axes.bar(
+        x=df['date'],
+        height=df['volume'],
+        color='#720000',
+        width=.5
+    )
+
+    axes.set_xbound(lower=-.5, upper=len(df) - .5)
+    axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
+    axes.set_xticks(xticks)
+    axes.set_xticklabels([])
+    axes.set_yticklabels([])
+    axes.tick_params(axis='x', direction='in', length=0)
+    axes.tick_params(axis='y', direction='out', length=1.5)

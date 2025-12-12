@@ -70,8 +70,8 @@ def plot_ohlc(
     :param xticks: Add a custom series of date xticks, else blank.
     """
 
-    required_columns_set = {'date', 'open', 'high', 'low', 'close', 'ema_5', 'ema_10', 'ema_20',
-                            'upper_channel', 'lower_channel', 'impulse'}
+    required_columns_set = {'date', 'open', 'high', 'low', 'close', 'ema_5', 'ema_10',
+                            'ema_20', 'upper_channel', 'lower_channel', 'impulse'}
 
     if not required_columns_set <= set(df.columns):
         raise ValueError('Missing necessary data to construct chart')

@@ -2,29 +2,39 @@ def price_action_query(
     symbol: str,
 ) -> str:
     return f"""
-    SELECT
-        date,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        ema_5,
-        ema_10,
-        ema_20,
-        upper_channel,
-        lower_channel,
-        fast_line,
-        signal_line,
-        macd_histogram,
-        impulse
-    FROM
-        daily
-    WHERE
-        symbol = '{symbol}'
-        AND date >= date('now', '-366 day')
-    ORDER BY
-        date
+            SELECT
+                dly.date,
+                dly.open,
+                dly.high,
+                dly.low,
+                dly.close,
+                dly.volume,
+                dly.ema_5,
+                dly.ema_10,
+                dly.ema_20,
+                dly.upper_channel,
+                dly.lower_channel,
+                dly.fast_line,
+                dly.signal_line,
+                dly.macd_histogram,
+                dly.impulse,
+                
+                wly.upper_channel AS weekly_upper_channel,
+                wly.lower_channel AS weekly_lower_channel,
+                wly.ema_5 AS weekly_ema_5,
+                wly.ema_10 AS weekly_ema_10,
+                wly.ema_20 AS weekly_ema_20
+            FROM
+                daily dly
+            INNER JOIN
+                weekly wly
+                    ON dly.symbol = wly.symbol
+                    AND dly.date BETWEEN wly.date AND date(wly.date, '+5 day')
+            WHERE
+                dly.symbol = '{symbol}'
+                AND dly.date >= date('now', '-366 day')
+            ORDER BY
+                dly.date
     """
 
 
@@ -50,7 +60,7 @@ def beginning_of_month_query(
     """
 
 
-def qualifying_symbols(
+def qualifying_symbols_query(
     volume_gte: int = 100000,
     close_gte: int = 10,
     years_gte: int = 2,

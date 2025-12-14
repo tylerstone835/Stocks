@@ -1,0 +1,5 @@
+Database/*.log
+*.db
+Charts/Daily/*.png
+*.idea
+.ipynb_checkpoints

@@ -1,5 +1,3 @@
-from datetime import date
-
 from procedures import *
 
 
@@ -35,5 +33,5 @@ def main():
     )
 
 
-if __name__ == '__main__' and date.today().weekday() < 5:
+if __name__ == '__main__':
     main()

@@ -25,3 +25,13 @@ ___
 **Symbol** - Metadata about the underlying companies (website, logo url, list date)
 
 **Calendar** - A standard DB date table to facilitate time intelligence queries (built using the **Pandas** and **Holidays** libraries).
+
+## Database Stored Procedures
+___
+What good is a database if it doesn't update and stay relevant? These [**stored procedures**](Database/stored_procedures.py) are scheduled to run after each market day with the intended goals in mind:
+1. Retrieve the latest price action from **[Massive's RESTful API](https://massive.com/)**
+2. Calculate the latest indicator derivatives
+3. Boot inactive stocks from the database
+4. Recruit symbols recently listed on the market
+
+The database creation script and update procedures are kept in the same module, as a lot of the same code can be reused.

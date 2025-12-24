@@ -1,6 +1,14 @@
+import io
+import os
+
+from cairosvg import svg2png
 import matplotlib.pyplot as plt
 import pandas as pd
+from PIL import Image
+import requests
 
+
+GRID_ALPHA = .7
 
 def plot_macd(
     axes: plt.axes,
@@ -40,7 +48,7 @@ def plot_macd(
 
     # _______________________________________ MACD Histogram Chart _______________________________________
     axes.bar(x=df['date'], height=df['macd_histogram'], width=.5, color=df['color'], zorder=3)
-    axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
+    axes.grid(visible=True, linestyle=':', alpha=GRID_ALPHA, zorder=0)
     axes.set_xticks(xticks)
     axes.set_xticklabels([])
     axes.set_yticklabels([])
@@ -98,9 +106,9 @@ def plot_ohlc(
         axes.plot(date, close, marker=1, color=color, markersize=1.5)
 
     axes.set_xbound(lower=-.5, upper=len(df) - .5)
-    axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
+    axes.grid(visible=True, linestyle=':', alpha=GRID_ALPHA, zorder=0)
     axes.set_xticks(xticks)
-    axes.set_xticklabels([])
+    axes.set_xticklabels([fdate.date().strftime('%b-%y') for fdate in xticks.astype('datetime64[ns]')])
     axes.tick_params(axis='x', direction='in', length=0)
     axes.tick_params(axis='y', direction='out', length=1.5)
 
@@ -131,9 +139,54 @@ def plot_volume(
     )
 
     axes.set_xbound(lower=-.5, upper=len(df) - .5)
-    axes.grid(visible=True, linestyle=':', alpha=.4, zorder=0)
+    axes.grid(visible=True, linestyle=':', alpha=GRID_ALPHA, zorder=0)
     axes.set_xticks(xticks)
     axes.set_xticklabels([])
     axes.set_yticklabels([])
     axes.tick_params(axis='x', direction='in', length=0)
     axes.tick_params(axis='y', direction='out', length=1.5)
+
+
+def overlay_image(
+    fig: plt.figure,
+    image_url: str | None,
+    image_height: int = 50,
+    image_alpha: float = .3,
+) -> None:
+    """
+    Overlay logo on parent figure.
+
+    :param fig: Parent figure.
+    :param image_url: Massive image url.
+    :param image_height: Height to scale image dims to.
+    :param image_alpha: Image transparency.
+    """
+
+    if not image_url:
+        print('No image provided')
+        return
+
+    api_key = os.environ.get('POLYGON_API_KEY')
+
+    response = requests.get('/'.join([image_url, f'?apiKey={api_key}']))
+
+    if response.status_code != 200:
+        print('Failed to retrieve image')
+        return
+
+    file_extension = image_url.split('.')[-1]
+
+    try:
+        image_bytes = svg2png(response.content) if file_extension == 'svg' else response.content
+    except:
+        print('Response content failed to convert')
+        return
+
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        # Scale image so height is 50 px and convert to grayscale
+        new_width = image_height * img.size[0] // img.size[1]
+        img = img.resize(size=(new_width, image_height)).convert(mode='LA')
+
+        # Calculate fig height in px to determine logo placement
+        image_offset = fig.dpi * fig.get_figheight() - img.size[1] - 25
+        fig.figimage(img, 55, image_offset, zorder=10, alpha=image_alpha)

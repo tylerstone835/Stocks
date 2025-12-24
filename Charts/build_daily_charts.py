@@ -4,7 +4,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from chart_utils import plot_macd, plot_ohlc, plot_volume
+from chart_utils import plot_macd, plot_ohlc, plot_volume, overlay_image
 from queries import *
 
 
@@ -59,6 +59,11 @@ def main() -> None:
                 axes=ax[0],
                 df=stock_data_df,
                 xticks=bom_df['BOM']
+            )
+
+            overlay_image(
+                fig=fig,
+                image_url = stock_data_df.loc[0, 'logo_url']
             )
 
             plt.tight_layout()

@@ -18,18 +18,23 @@ def price_action_query(
                 dly.signal_line,
                 dly.macd_histogram,
                 dly.impulse,
-                
+
                 wly.upper_channel AS weekly_upper_channel,
                 wly.lower_channel AS weekly_lower_channel,
                 wly.ema_5 AS weekly_ema_5,
                 wly.ema_10 AS weekly_ema_10,
-                wly.ema_20 AS weekly_ema_20
+                wly.ema_20 AS weekly_ema_20,
+
+                sym.logo_url
             FROM
                 daily dly
             INNER JOIN
                 weekly wly
                     ON dly.symbol = wly.symbol
                     AND dly.date BETWEEN wly.date AND date(wly.date, '+5 day')
+            INNER JOIN
+                symbols sym
+                    ON dly.symbol = sym.symbol
             WHERE
                 dly.symbol = '{symbol}'
                 AND dly.date >= date('now', '-366 day')

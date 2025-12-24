@@ -48,6 +48,7 @@ class Symbol:
             )
 
         self.row = 0
+        self.logic_index = 0
         self.get_trend()
         self.get_channel_status()
         self.get_macd_extremes()
@@ -58,12 +59,17 @@ class Symbol:
     def __str__(self):
         return (
             f'Symbol | {self.symbol}\n'
+            f'Date | {self.data.loc[self.row, 'date'].date()}\n'
             f'Trend | {self.trend}\n'
             f'Channel Status | {self.channel_status}\n'
             f'Shape | {self.data.shape}\n'
             f'Current Row | {self.row}\n'
+            f'Current MACD | {self.current_macd}\n'
             f'Min MACD | {self.min_macd}\n'
-            f'Max MACD | {self.max_macd}'
+            f'Max MACD | {self.max_macd}\n'
+            f'Value Status | {self.value_status}\n'
+            f'Impulse Status | {self.impulse_status}\n'
+            f'Logic Index | {self.logic_index}\n'
         )
 
 
@@ -114,14 +120,17 @@ class Symbol:
         macd_df = (
             self.data
             .loc[
-                lambda df: (df['date'] < self.data.loc[self.row, 'date']) &
+                lambda df: (df['date'] <= self.data.loc[self.row, 'date']) &
                 (df['date'] >= self.data.loc[self.row, 'date'] - pd.Timedelta(days=30 * 6))
             ]
             ['macd_histogram']
         )
 
+        self.current_macd = self.data.loc[self.row, 'macd_histogram']
         self.min_macd = macd_df.min()
         self.max_macd = macd_df.max()
+
+
 
 
     def get_value_status(self):
@@ -153,8 +162,3 @@ class Symbol:
             self.impulse_status = 'Resuming'
         else:
             self.impulse_status = None
-
-
-symbol = Symbol('LEG')
-for period in symbol:
-    print(symbol.impulse_status)

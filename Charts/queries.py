@@ -79,6 +79,8 @@ def qualifying_symbols_query(
         symbol
     FROM
         daily
+    WHERE
+        upper_channel IS NOT NULL
     GROUP BY
         1
     HAVING

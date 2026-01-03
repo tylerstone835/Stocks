@@ -13,7 +13,7 @@ GRID_ALPHA = .7
 def plot_macd(
     axes: plt.axes,
     df: pd.DataFrame,
-    xticks: list|pd.Series = [],
+    xticks: pd.Series = pd.Series(),
 ) -> None:
     """
     Plot MACD histogram on child axes. This plot needs an aditional day of price action
@@ -67,7 +67,7 @@ def plot_macd(
 def plot_ohlc(
     axes: plt.axes,
     df: pd.DataFrame,
-    xticks: list|pd.Series = [],
+    xticks: pd.Series = pd.Series(),
 ) -> None:
     """
     Plot OHLC chart on child axes. Requires OHLC data, all EMAs,
@@ -118,7 +118,7 @@ def plot_ohlc(
 def plot_volume(
     axes: plt.axes,
     df: pd.DataFrame,
-    xticks: list|pd.Series = [],
+    xticks: pd.Series = pd.Series(),
 ) -> None:
     """
     Plot bar chart of volume data on child axes.
@@ -190,3 +190,59 @@ def overlay_image(
         # Calculate fig height in px to determine logo placement
         image_offset = fig.dpi * fig.get_figheight() - img.size[1] - 25
         fig.figimage(img, 55, image_offset, zorder=10, alpha=image_alpha)
+
+
+def plot_standard_chart(
+    axes: plt.axes,
+    df: pd.DataFrame,
+    xticks: pd.Series = pd.Series(),
+) -> None:
+
+    plot_macd(
+        axes=axes[2],
+        df=df,
+        xticks=xticks
+    )
+
+    plot_volume(
+        axes=axes[1],
+        df=df,
+        xticks=xticks
+    )
+
+    plot_ohlc(
+        axes=axes[0],
+        df=df,
+        xticks=xticks
+    )
+
+
+def shade_entry(
+    n_periods: int,
+    entry: str,
+    df: pd.DataFrame,
+    ax: plt.axes,
+) -> None:
+
+    if not {'date', 'upper_channel', 'lower_channel'} <= set(df.columns):
+        raise ValueError('Missing required fields to shade plot area...')
+
+    shade_df = df
+    shade_df['date'] = shade_df['date'].astype('datetime64[ns]')
+
+    current_index = shade_df.loc[shade_df['date'] == entry].index[0]
+
+    if current_index + n_periods > shade_df.shape[0] - 1:
+        end_index = shade_df.shape[0] - 1
+    else:
+        end_index = current_index + n_periods
+
+    end_date = shade_df.loc[end_index, 'date']
+
+    shade_df['where'] = (shade_df['date'] >= entry) & (shade_df['date'] <= end_date)
+
+    shade_df['date'] = shade_df['date'].astype('string')
+
+
+    ax.fill_between(x=shade_df['date'], y1=shade_df['lower_channel'], y2=shade_df['upper_channel'], where=shade_df['where'], alpha=.25)
+    ax.set_xbound(lower=-.5, upper=len(shade_df) - .5)

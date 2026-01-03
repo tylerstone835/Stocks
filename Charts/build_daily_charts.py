@@ -32,7 +32,8 @@ def main() -> None:
 
             stock_data_df = pd.read_sql_query(
                 con=con,
-                sql=price_action_query(symbol)
+                sql=price_action_query(symbol),
+                dtype={'date': 'string'}
             )
 
             fig, ax = plt.subplots(

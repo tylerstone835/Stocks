@@ -1,7 +1,10 @@
 import os
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import sqlite3
+
+from chart_utils import plot_standard_chart, shade_entry
 
 
 class Symbol:
@@ -47,8 +50,10 @@ class Symbol:
                 }
             )
 
+        self.index_dict = dict()
         self.row = 0
         self.logic_index = 0
+        self.generated_plots = 0
         self.get_trend()
         self.get_channel_status()
         self.get_macd_extremes()
@@ -162,3 +167,59 @@ class Symbol:
             self.impulse_status = 'Resuming'
         else:
             self.impulse_status = None
+
+
+    def log_index(self):
+        if self.logic_index not in self.index_dict:
+            self.index_dict[self.logic_index] = self.data.loc[self.row, 'date'].date().strftime('%Y-%m-%d')
+
+
+    def reset_index(self):
+        self.index_dict = dict()
+
+
+    def promote(
+        self,
+        increment: int = 1
+    ):
+        self.logic_index += increment
+        self.log_index()
+
+
+    def demote(
+        self,
+        increment: int
+    ):
+        self.logic_index -= increment
+        self.reset_index()
+
+
+    def plot_data(
+        self,
+        fmonths: int = 6,
+        bmonths: int = 6
+    ):
+        df = self.data
+        current_date = df.loc[self.row, 'date']
+
+        df = df.loc[
+            (df['date'] >= current_date - pd.Timedelta(days=30 * bmonths)) &
+            (df['date'] <= current_date + pd.Timedelta(days=30 * fmonths))
+        ].reset_index(drop=True)
+
+        fig, ax = plt.subplots(
+            nrows=3,
+            ncols=1,
+            sharex=True,
+            height_ratios=[.73, .07, .2],
+            figsize=(20, 10)
+        )
+        df['date'] = df['date'].astype('string')
+        plot_standard_chart(axes=ax, df=df, xticks=pd.Series([i for i in self.index_dict.values()]))
+        shade_entry(df=df, entry=current_date, n_periods=20, ax=ax[0])
+
+        plt.tight_layout()
+        plt.savefig(f'/home/tst/python/Stocks/Charts/Strategies/{self.symbol}_{self.generated_plots}.png')
+        plt.close()
+
+        self.generated_plots += 1

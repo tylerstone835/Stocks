@@ -54,12 +54,15 @@ def plot_macd(
     axes.set_yticklabels([])
     axes.tick_params(axis='x', direction='in', length=0)
     axes.tick_params(axis='y', direction='out', length=1.5)
-    axes.set_xbound(lower=-.5, upper=len(df) - .5)
+
 
     line_axes = axes.twinx()
     line_axes.plot(df['date'], df['fast_line'], linestyle='-', color='k', linewidth=.4)
     line_axes.plot(df['date'], df['signal_line'], linestyle='-', color='k', linewidth=.8)
     line_axes.set_yticks([])
+
+    axes.set_xbound(lower=-.5, upper=len(df) - .5)
+    line_axes.set_xbound(lower=-.5, upper=len(df) - .5)
 
     df.drop(columns=['yest_hist', 'color'], inplace=True)
 
@@ -105,12 +108,12 @@ def plot_ohlc(
         axes.plot(date, open, marker=0, color=color, markersize=1.5)
         axes.plot(date, close, marker=1, color=color, markersize=1.5)
 
-    axes.set_xbound(lower=-.5, upper=len(df) - .5)
     axes.grid(visible=True, linestyle=':', alpha=GRID_ALPHA, zorder=0)
     axes.set_xticks(xticks)
     axes.set_xticklabels([fdate.date().strftime('%b-%y') for fdate in xticks.astype('datetime64[ns]')])
     axes.tick_params(axis='x', direction='in', length=0)
     axes.tick_params(axis='y', direction='out', length=1.5)
+    axes.set_xbound(lower=-.5, upper=len(df) - .5)
 
     df.drop(columns=['color'], inplace=True)
 

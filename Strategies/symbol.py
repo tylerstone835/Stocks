@@ -14,17 +14,11 @@ class Symbol:
         self.symbol = symbol
         self.lookback_years = lookback_years
 
-        self.daily_row_index = 0
-        self.daily_trend = None
         self.daily_macd_min = None
         self.daily_macd_max = None
-        self.daily_channel_status = None
 
-        self.weekly_row_index = 0
-        self.weekly_trend = None
         self.weekly_macd_min = None
         self.weekly_macd_max = None
-        self.weekly_channel_status = None
 
         with sqlite3.connect(os.environ.get('STOCK_DATABASE')) as con:
 
@@ -76,6 +70,9 @@ class Symbol:
             self.weekly_df.loc[lambda df: (df['macd_histogram'] >= 0) & (df['macd_histogram'] >= df['yest_macd']), ['season']] = 'Summer'
             self.weekly_df.loc[lambda df: (df['macd_histogram'] > 0) & (df['macd_histogram'] < df['yest_macd']), ['season']] = 'Autumn'
 
+            self.weekly_row_index = 0
+            self.set_weekly()
+
             # _____________ Initialize weekly dataframe _____________
 
             self.daily_df = (
@@ -126,34 +123,39 @@ class Symbol:
             self.daily_df.loc[lambda df: (df['macd_histogram'] >= 0) & (df['macd_histogram'] >= df['yest_macd']), ['season']] = 'Summer'
             self.daily_df.loc[lambda df: (df['macd_histogram'] > 0) & (df['macd_histogram'] < df['yest_macd']), ['season']] = 'Autumn'
 
+            self.daily_row_index = 0
+            self.set_daily()
+
 
     # __________________________________________________ Navigation __________________________________________________
     def increment_daily(
         self,
         distance: int = 1
-    ):
+    ) -> None:
         if self.daily_row_index + distance > self.daily_df.index.max():
             print(f'Daily index {self.daily_row_index + distance}/{self.daily_df.index.max()} out of bounds...')
             return
 
         self.daily_row_index += distance
+        self.set_daily()
 
 
     def increment_weekly(
         self,
         distance: int = 1
-    ):
+    ) -> None:
         if self.weekly_row_index + distance > self.weekly_df.index.max():
             print(f'Weekly index {self.weekly_row_index + distance}/{self.weekly_df.index.max()} out of bounds...')
             return
 
         self.weekly_row_index += distance
+        self.set_weekly()
 
 
-    def fast_forward_daily(
+    def ff_daily(
         self,
         months: float,
-    ):
+    ) -> None:
         current_date = self.daily_df.at[self.daily_row_index, 'date']
         timedelta = pd.Timedelta(int(30 * months), 'days')
         new_index = self.daily_df.loc[lambda df: df['date'] >= current_date + timedelta].index.min()
@@ -163,12 +165,13 @@ class Symbol:
             return
 
         self.daily_row_index = new_index
+        self.set_daily()
 
 
-    def fast_forward_weekly(
+    def ff_weekly(
         self,
         months: float,
-    ):
+    ) -> None:
         current_date = self.weekly_df.at[self.weekly_row_index, 'date']
         timedelta = pd.Timedelta(int(30 * months), 'days')
         new_index = self.weekly_df.loc[lambda df: df['date'] <= current_date + timedelta].index.max()
@@ -178,11 +181,12 @@ class Symbol:
             return
 
         self.weekly_row_index = new_index
+        self.set_weekly()
 
 
-    def synchronize_daily(
+    def sync_daily(
         self,
-    ):
+    ) -> None:
 
         current_weekly_date = self.weekly_df.at[self.weekly_row_index, 'date']
         new_daily_index = self.daily_df.loc[lambda df: df['date'] >= current_weekly_date].index.min()
@@ -192,11 +196,12 @@ class Symbol:
             return
 
         self.daily_row_index = new_daily_index
+        self.set_daily()
 
 
-    def synchronize_weekly(
+    def sync_weekly(
         self,
-    ):
+    ) -> None:
 
         current_daily_date = self.daily_df.at[self.daily_row_index, 'date']
         new_weekly_index = self.weekly_df.loc[lambda df: df['date'] <= current_daily_date].index.max()
@@ -206,36 +211,98 @@ class Symbol:
             return
 
         self.weekly_row_index = new_weekly_index
+        self.set_weekly()
+
+
+    # ____________________________________________________ Calculations ____________________________________________________
+    def calculate_trend(
+        self,
+        series_row: pd.Series,
+    ) -> str | None:
+        if series_row.ema_10 > series_row.ema_20:
+            return 'Bullish'
+        elif series_row.ema_10 < series_row.ema_20:
+            return 'Bearish'
+        else:
+            return None
+
+
+    def calculate_channel_status(
+        self,
+        series_row: pd.Series,
+    ) -> str | None:
+        if series_row.high > series_row.upper_channel or series_row.low < series_row.lower_channel:
+            return 'Penetrated'
+        else:
+            return None
 
 
     # __________________________________________________ Attribute Updates __________________________________________________
+    def set_daily(
+        self,
+    ) -> None:
+        self.set_daily_row()
+        self.set_daily_trend()
+        self.set_daily_channel_status()
+
+
+    def set_weekly(
+        self,
+    ) -> None:
+        self.set_weekly_row()
+        self.set_weekly_trend()
+        self.set_weekly_channel_status()
+
+
+    def set_daily_row(
+        self,
+    ) -> None:
+        if self.daily_df.empty:
+            return
+
+        self.daily_row = self.daily_df.loc[self.daily_row_index]
+
+
+    def set_weekly_row(
+        self,
+    ) -> None:
+        if self.weekly_df.empty:
+            return
+
+        self.weekly_row = self.weekly_df.loc[self.weekly_row_index]
+
+
     def set_daily_trend(
+        self,
+    ) -> None:
+        if self.daily_df.empty:
+            return
+
+        self.daily_trend = self.calculate_trend(self.daily_row)
+
+
+    def set_weekly_trend(
+        self,
+    ) -> None:
+        if self.weekly_df.empty:
+            return
+
+        self.weekly_trend = self.calculate_trend(self.weekly_row)
+
+
+    def set_daily_channel_status(
         self,
     ):
         if self.daily_df.empty:
             return
 
-        row = self.daily_df.loc[self.daily_row_index, ['ema_10', 'ema_20']]
-
-        if row.ema_10 > row.ema_20:
-            self.daily_trend = 'Bullish'
-        elif row.ema_10 < row.ema_20:
-            self.daily_trend = 'Bearish'
-        else:
-            self.daily_trend = None
+        self.daily_channel_status = self.calculate_channel_status(self.daily_row)
 
 
-    def set_weekly_trend(
+    def set_weekly_channel_status(
         self,
     ):
         if self.weekly_df.empty:
             return
 
-        row = self.weekly_df.loc[self.weekly_row_index, ['ema_10', 'ema_20']]
-
-        if row.ema_10 > row.ema_20:
-            self.weekly_trend = 'Bullish'
-        elif row.ema_10 < row.ema_20:
-            self.weekly_trend = 'Bearish'
-        else:
-            self.weekly_trend = None
+        self.weekly_channel_status = self.calculate_channel_status(self.weekly_row)

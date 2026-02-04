@@ -16,9 +16,11 @@ class Symbol:
 
         self.daily_macd_min = None
         self.daily_macd_max = None
+        self.daily_trigger_index = 0
 
         self.weekly_macd_min = None
         self.weekly_macd_max = None
+        self.weekly_trigger_index = 0
 
         with sqlite3.connect(os.environ.get('STOCK_DATABASE')) as con:
 
@@ -71,6 +73,7 @@ class Symbol:
             self.weekly_df.loc[lambda df: (df['macd_histogram'] > 0) & (df['macd_histogram'] < df['yest_macd']), ['season']] = 'Autumn'
 
             self.weekly_row_index = 0
+            self.weekly_range = range(0, self.weekly_df.shape[0])
             self.set_weekly()
 
             # _____________ Initialize weekly dataframe _____________
@@ -124,6 +127,7 @@ class Symbol:
             self.daily_df.loc[lambda df: (df['macd_histogram'] > 0) & (df['macd_histogram'] < df['yest_macd']), ['season']] = 'Autumn'
 
             self.daily_row_index = 0
+            self.daily_range = range(0, self.daily_df.shape[0])
             self.set_daily()
 
 
@@ -237,13 +241,32 @@ class Symbol:
             return None
 
 
-    # __________________________________________________ Attribute Updates __________________________________________________
+    def calculate_macd_extremes(
+        self,
+        df: pd.DataFrame,
+        row_index: int,
+        lookback_months: int,
+    ) -> None:
+        current_date = df.at[row_index, 'date']
+        time_delta = pd.Timedelta(days=30 * lookback_months)
+
+        macd_df = df[['date', 'macd_histogram']].loc[
+            (df['date'] <= current_date) &
+            (df['date'] >= current_date - time_delta)
+        ]
+
+        return macd_df['macd_histogram'].min(), macd_df['macd_histogram'].max()
+
+
+
+    # __________________________________________________ Setters __________________________________________________
     def set_daily(
         self,
     ) -> None:
         self.set_daily_row()
         self.set_daily_trend()
         self.set_daily_channel_status()
+        self.set_daily_macd_extremes()
 
 
     def set_weekly(
@@ -252,6 +275,7 @@ class Symbol:
         self.set_weekly_row()
         self.set_weekly_trend()
         self.set_weekly_channel_status()
+        self.set_weekly_macd_extremes()
 
 
     def set_daily_row(
@@ -292,7 +316,7 @@ class Symbol:
 
     def set_daily_channel_status(
         self,
-    ):
+    ) -> None:
         if self.daily_df.empty:
             return
 
@@ -301,8 +325,49 @@ class Symbol:
 
     def set_weekly_channel_status(
         self,
-    ):
+    ) -> None:
         if self.weekly_df.empty:
             return
 
         self.weekly_channel_status = self.calculate_channel_status(self.weekly_row)
+
+
+    def set_daily_macd_extremes(
+        self,
+    ) -> None:
+        if self.daily_df.empty:
+            return
+
+        self.daily_macd_min, self.daily_macd_max = self.calculate_macd_extremes(
+            df = self.daily_df,
+            row_index = self.daily_row_index,
+            lookback_months = 3
+        )
+
+
+    def set_weekly_macd_extremes(
+        self,
+    ) -> None:
+        if self.weekly_df.empty:
+            return
+
+        self.weekly_macd_min, self.weekly_macd_max = self.calculate_macd_extremes(
+            df = self.weekly_df,
+            row_index = self.weekly_row_index,
+            lookback_months = 15
+        )
+
+
+    # __________________________________________________ Methods __________________________________________________
+    def inc_daily(
+        self,
+        amount: int = 1,
+    ) -> None:
+        self.daily_trigger_index += amount
+
+
+    def inc_weekly(
+        self,
+        amount: int = 1,
+    ) -> None:
+        self.weekly_trigger_index += amount

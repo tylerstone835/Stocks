@@ -246,7 +246,7 @@ class Symbol:
         df: pd.DataFrame,
         row_index: int,
         lookback_months: int,
-    ) -> None:
+    ) -> tuple:
         current_date = df.at[row_index, 'date']
         time_delta = pd.Timedelta(days=30 * lookback_months)
 
@@ -258,6 +258,20 @@ class Symbol:
         return macd_df['macd_histogram'].min(), macd_df['macd_histogram'].max()
 
 
+    def calculate_value_status(
+        self,
+        series_row: pd.Series,
+    ) -> bool:
+
+        pa_max = series_row[['open', 'high', 'low', 'close']].max()
+        pa_min = series_row[['open', 'high', 'low', 'close']].min()
+
+        ema_max = series_row[['ema_10', 'ema_20']].max()
+        ema_min = series_row[['ema_10', 'ema_20']].min()
+
+        return max(pa_min, ema_min) <= min(pa_max, ema_max)
+
+
 
     # __________________________________________________ Setters __________________________________________________
     def set_daily(
@@ -267,6 +281,7 @@ class Symbol:
         self.set_daily_trend()
         self.set_daily_channel_status()
         self.set_daily_macd_extremes()
+        self.set_daily_value_status()
 
 
     def set_weekly(
@@ -276,6 +291,7 @@ class Symbol:
         self.set_weekly_trend()
         self.set_weekly_channel_status()
         self.set_weekly_macd_extremes()
+        self.set_weekly_value_status()
 
 
     def set_daily_row(
@@ -339,9 +355,9 @@ class Symbol:
             return
 
         self.daily_macd_min, self.daily_macd_max = self.calculate_macd_extremes(
-            df = self.daily_df,
-            row_index = self.daily_row_index,
-            lookback_months = 3
+            df=self.daily_df,
+            row_index=self.daily_row_index,
+            lookback_months=3
         )
 
 
@@ -356,6 +372,24 @@ class Symbol:
             row_index = self.weekly_row_index,
             lookback_months = 15
         )
+
+
+    def set_daily_value_status(
+        self,
+    ) -> None:
+        if self.daily_df.empty:
+            return
+
+        self.daily_value_status = self.calculate_value_status(self.daily_row)
+
+
+    def set_weekly_value_status(
+        self,
+    ) -> None:
+        if self.weekly_df.empty:
+            return
+
+        self.weekly_value_status = self.calculate_value_status(self.weekly_row)
 
 
     # __________________________________________________ Methods __________________________________________________

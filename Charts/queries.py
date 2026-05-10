@@ -60,7 +60,7 @@ def beginning_of_month_query(
 def qualifying_symbols_query(
     volume_gte: int = 100000,
     close_gte: int = 10,
-    years_gte: int = 2,
+    years_gte: int = 3,
 ) -> str:
 
     return f"""

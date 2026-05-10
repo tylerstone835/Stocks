@@ -36,6 +36,9 @@ def main() -> None:
                 dtype={'date': 'string'}
             )
 
+            if stock_data_df.shape[0] <= 1:
+                continue
+
             fig, ax = plt.subplots(
                 nrows=3,
                 ncols=1,

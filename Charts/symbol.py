@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sqlite3
 
-from chart_utils import plot_standard_chart, shade_entry
+from chart_utils import *
 
 
 class Symbol:
@@ -24,6 +24,7 @@ class Symbol:
                 WHERE
                     symbol = '{self.symbol}'
                     AND upper_channel IS NOT NULL
+                    AND date >= '2025-01-01'
                 ORDER BY
                     date
                 """,
@@ -50,15 +51,53 @@ class Symbol:
                 }
             )
 
+            self.weekly_data = pd.read_sql_query(
+                con=con,
+                sql=f"""
+                SELECT
+                    *
+                FROM
+                    weekly
+                WHERE
+                    symbol = '{self.symbol}'
+                    AND upper_channel IS NOT NULL
+                    AND date >= '2023-01-01'
+                ORDER BY
+                    date
+                """,
+                dtype={
+                    'date': 'datetime64[ns]',
+                    'symbol': 'string',
+                    'open': 'float',
+                    'high': 'float',
+                    'low': 'float',
+                    'close': 'float',
+                    'volume': 'int',
+                    'ema_5': 'float',
+                    'ema_10': 'float',
+                    'ema_20': 'float',
+                    'fast_line': 'float',
+                    'signal_line': 'float',
+                    'macd_histogram': 'float',
+                    'deviation': 'float',
+                    'upper_channel': 'float',
+                    'lower_channel': 'float',
+                    'atr': 'float',
+                    'impulse': 'string'
+                }
+            )
+
         self.index_dict = dict()
         self.row = 0
         self.logic_index = 0
         self.generated_plots = 0
-        self.get_trend()
-        self.get_channel_status()
-        self.get_macd_extremes()
-        self.get_value_status()
-        self.get_impulse_status()
+
+        if not self.data.empty:
+            self.get_trend()
+            self.get_channel_status()
+            self.get_macd_extremes()
+            self.get_value_status()
+            self.get_impulse_status()
 
 
     def __str__(self):
@@ -79,12 +118,18 @@ class Symbol:
 
 
     def __iter__(self):
-        self.row = self.data.loc[lambda df: df['date'] >= df['date'].min() + pd.Timedelta(days=30 * 6)].head(1).index[0]
-        self.get_trend()
-        self.get_channel_status()
-        self.get_macd_extremes()
-        self.get_value_status()
-        self.get_impulse_status()
+        try:
+            self.row = self.data.loc[lambda df: df['date'] >= df['date'].min() + pd.Timedelta(days=30 * 6)].head(1).index[0]
+        except IndexError:
+            self.row = self.data.shape[0] - 1
+
+        if not self.data.empty:
+            self.get_trend()
+            self.get_channel_status()
+            self.get_macd_extremes()
+            self.get_value_status()
+            self.get_impulse_status()
+
         return self
 
 
@@ -101,6 +146,7 @@ class Symbol:
 
 
     def get_trend(self):
+
         df = self.data.loc[self.row]
 
         if df.ema_5 > df.ema_10 > df.ema_20:
@@ -136,8 +182,6 @@ class Symbol:
         self.max_macd = macd_df.max()
 
 
-
-
     def get_value_status(self):
         df = self.data.loc[self.row]
 
@@ -167,6 +211,18 @@ class Symbol:
             self.impulse_status = 'Resuming'
         else:
             self.impulse_status = None
+
+
+    def get_week_equivalent(
+        self,
+        date: pd.Timestamp,
+        weekly_df: pd.DataFrame
+    ) -> str:
+
+        if not {'date'} <= set(weekly_df.columns):
+            raise ValueError('Required data not found...')
+
+        return weekly_df.loc[weekly_df['date'] <= date]['date'].max().date().strftime('%Y-%m-%d')
 
 
     def log_index(self):
@@ -200,7 +256,7 @@ class Symbol:
         bmonths: int = 6
     ):
         df = self.data
-        current_date = df.loc[self.row, 'date']
+        current_date = df.at[self.row, 'date']
 
         df = df.loc[
             (df['date'] >= current_date - pd.Timedelta(days=30 * bmonths)) &
@@ -208,18 +264,37 @@ class Symbol:
         ].reset_index(drop=True)
 
         fig, ax = plt.subplots(
-            nrows=3,
+            nrows=5,
             ncols=1,
-            sharex=True,
-            height_ratios=[.73, .07, .2],
+            height_ratios=[.365, .1, .4, .035, .1],
             figsize=(20, 10)
         )
+
         df['date'] = df['date'].astype('string')
-        plot_standard_chart(axes=ax, df=df, xticks=pd.Series([i for i in self.index_dict.values()]))
-        shade_entry(df=df, entry=current_date, n_periods=20, ax=ax[0])
+        plot_standard_chart(axes=ax[2:], df=df, xticks=pd.Series([i for i in self.index_dict.values()]))
+        shade_entry(df=df, entry=current_date, n_periods=20, ax=ax[2])
+
+        weekly_df = self.weekly_data
+        weekly_annotation = self.get_week_equivalent(current_date, weekly_df)
+        weekly_df['date'] = weekly_df['date'].astype('string')
+
+        plot_macd(
+            axes=ax[1],
+            df=weekly_df,
+            xticks=pd.Series(weekly_annotation)
+        )
+
+        plot_ohlc(
+            axes=ax[0],
+            df=weekly_df,
+            xticks=pd.Series(weekly_annotation)
+        )
+
 
         plt.tight_layout()
         plt.savefig(f'/home/tst/python/Stocks/Charts/Strategies/{self.symbol}_{self.generated_plots}.png')
         plt.close()
 
+
+        weekly_df['date'] = weekly_df['date'].astype('datetime64[ns]')
         self.generated_plots += 1

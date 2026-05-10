@@ -1,6 +1,11 @@
 Database/*.log
 *.db
-Charts/Daily/*.png
+Charts/Daily
+Charts/Weekly
+Charts/Golden
+Charts/Strategies
+Charts/Test
+
 Charts/Strategies/*
 *.idea
 .ipynb_checkpoints

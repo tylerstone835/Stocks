@@ -21,6 +21,7 @@ class Symbol:
         self.weekly_macd_min = None
         self.weekly_macd_max = None
         self.weekly_trigger_index = 0
+        self.weekly_annotations = []
 
         with sqlite3.connect(os.environ.get('STOCK_DATABASE')) as con:
 
@@ -320,6 +321,15 @@ class Symbol:
 
         self.daily_trend = self.calculate_trend(self.daily_row)
 
+        if self.daily_trend == 'Bullish':
+            self.daily_cooldown_season = 'Spring'
+
+        elif self.daily_trend == 'Bearish':
+            self.daily_cooldown_season = 'Autumn'
+
+        else:
+            self.daily_cooldown_season = None
+
 
     def set_weekly_trend(
         self,
@@ -328,6 +338,16 @@ class Symbol:
             return
 
         self.weekly_trend = self.calculate_trend(self.weekly_row)
+
+        if self.weekly_trend == 'Bullish':
+            self.weekly_cooldown_season = 'Spring'
+
+        elif self.weekly_trend == 'Bearish':
+            self.weekly_cooldown_season = 'Autumn'
+
+        else:
+            self.weekly_cooldown_season = None
+
 
 
     def set_daily_channel_status(
@@ -393,14 +413,14 @@ class Symbol:
 
 
     # __________________________________________________ Methods __________________________________________________
-    def inc_daily(
+    def inc_daily_trigger(
         self,
         amount: int = 1,
     ) -> None:
         self.daily_trigger_index += amount
 
 
-    def inc_weekly(
+    def inc_weekly_trigger(
         self,
         amount: int = 1,
     ) -> None:

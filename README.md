@@ -4,7 +4,7 @@ ___
 Leveraging **Python** and **[Massive's RESTful API](https://massive.com/)** service (formerly Polygon.io), I've created the following:
 1. **SQLite** Database Creation Pipeline
 2. Stored Procedures to perform DB updates/maintence 
-3. Charting utilities to visualize data from our newfound DB with **matplotlib**
+3. Charting utilities to visualize data from newly created DB with **matplotlib**
 
 These modules are fully operational as I depend on them for my day-to-day market analysis/backtesting. Let's unpack each of these in a little more detail.
 

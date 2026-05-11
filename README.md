@@ -20,7 +20,7 @@ The DB table structures are stored in [table_maps.py](Database/table_maps.py). T
 ___
 **Daily** - The daily price action of over 5,000 stock market symbols, enriched with popularly used indicators (MACD, EMA's).
 
-**Weekly** - The weekly price action of those same symbols, enriched with the same indicators (minus SMA_50).
+**Weekly** - The weekly price action, enriched with the same indicators (minus SMA_50).
 
 **Symbol** - Metadata about the underlying companies (website, logo url, list date)
 

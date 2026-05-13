@@ -9,3 +9,4 @@ Charts/Test
 Charts/Strategies/*
 *.idea
 .ipynb_checkpoints
+__pycache__/

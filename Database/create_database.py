@@ -18,7 +18,13 @@ def main():
     )
 
     # Create SQL tables.
-    sql_table_dict = {'daily': daily_map, 'weekly': weekly_map, 'symbols': overview_map, 'calendar': date_dimension_map}
+    sql_table_dict = {
+        'daily': daily_map,
+        'weekly': weekly_map,
+        'monthly': monthly_map,
+        'symbols': overview_map,
+        'calendar': date_dimension_map
+    }
 
     for table_name, table_map in sql_table_dict.items():
         create_table_from_map(map=table_map, table_name=table_name)
@@ -60,6 +66,22 @@ def main():
 
         insert_data(weekly_df, table_name='weekly')
         logger.info('Weekly batch %s/%s loaded', batch_number, number_of_batches)
+
+        # _____________________________ monthly table _____________________________
+        # Gather/Calculate ticker data for batch and insert into monthly SQL table.
+        monthly_df = asyncio.run(gather_price_action(*batch, timespan='month'))
+
+        calculate_ema(monthly_df, 5)
+        calculate_ema(monthly_df, 10)
+        calculate_ema(monthly_df, 20)
+        calculate_macd(monthly_df)
+        calculate_keltner_channels(monthly_df, window=26)
+        calculate_atr(monthly_df)
+        calculate_impulse(monthly_df)
+        timestamp_to_date(monthly_df)
+
+        insert_data(monthly_df, table_name='monthly')
+        logger.info('Monthly batch %s/%s loaded', batch_number, number_of_batches)
 
         # ________________________ symbols table ________________________
         # Gather ticker data for batch and insert into overview SQL table.
